@@ -5,11 +5,12 @@ import json
 #change QNbits in elgamal.py
 #TODO modulo in for *= %G.p
 
-# groups
+# groups size
 l=2
 m=3
 p=7
 
+# generators
 G=eg.gen_group()
 h=eg.random_generator(G.p,G.q)
 u=eg.random_generator(G.p, G.q)
@@ -27,6 +28,8 @@ for _ in range(l):
         h_bolds_i.append(eg.random_generator(G.p, G.q))
     g_bolds.append(g_bolds_i)
     h_bolds.append(h_bolds_i)
+
+# votes and commitment on votes
 Vs=[]
 vs=np.random.randint(2,size=(l,m))
 gammas=[]
@@ -54,12 +57,12 @@ def delta(y,z):
         z_m_i*=z %G.q
     return ((y_m*(z-z_2)%G.q )%G.q- z_m)  %G.q
 
+#Prover's function
 def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     #step 1#
     a_Ls=vs.copy()
     #verify if modulo 2 TODO
     a_Rs=a_Ls-np.ones((l,m))
-    print(a_Rs[0][0],a_Rs)
     alpha=G.random_exp()
     rho=G.random_exp()
     s_Ls=[]
@@ -73,7 +76,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         s_Ls.append(s_Ls_i)
         s_Rs.append(s_Rs_i)
     A=pow(h,alpha,G.p)
-    print(G.p)
     S=pow(h,rho,G.p)
     for i in range(l):
         for j in range(m):
@@ -83,7 +85,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             S*=pow(h_bolds[i][j],s_Rs[i][j],G.p) % G.p
     
     #step 2 - 3 - 4#
-    print(type(Vs[0]), type(hs[0]))
     y = hashg(json.dumps({"A": A,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
     z = hashg(json.dumps({"S": S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
     #TODO : verify hashes ?
@@ -114,7 +115,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     ls=[]
     rs=[]
     zs_1=z*np.ones(m)
-    print(zs_1)
     zs_m=np.ones(m)
     zs_m_i= pow(z,2,G.q)
     #TODO : \mathbf{y}^m c'est bien un vecteur (1,y,...y^m) ?
@@ -127,10 +127,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         zs_m_i*=z % G.q
         ys_m_i*=y %G.q
     for j in range(l):
-        print("als", a_Ls[j])
-        print("zs1", zs_1)
-        print("sls",s_Ls[j])
-        print(j, x, type(s_Ls))
         ls.append(np.array(a_Ls[j]-zs_1+np.array(s_Ls[j])*x %G.q)%G.q)
         rs_i=[]
         rhs=np.array(a_Rs[j]+zs_1+np.array(s_Rs[j])*x%G.q)%G.q
@@ -140,7 +136,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             zs_m*=z%G.q
         rs.append(rs_i)
     t_hats= [np.dot(np.array(ls[j]),np.array(rs[j]).T) % G.q for j in range(l)]
-    print(t_hats)
     tau_x= tau2*x_2 %G.q + tau1*x %G.q 
     for j in range(1,m-1):
         tau_x+= zs_m[j]*gammas[j-1] % G.q
@@ -150,7 +145,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
 
     #step 10 - 11 - 12#
     #TODO : verify if we need to add other things in the hash
-    print(tau_x,mu)
     phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
 
     #step 13#
@@ -170,7 +164,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     phi_i=1
     phis_l=np.zeros(l)
     phi_i_l=1
-    print(h_bolds, y_i)
     y_1=pow(y,G.q-1,G.p)
     phi_1=pow(phi,G.q-1,G.p)
     for j in range(l):
@@ -210,6 +203,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
 
     return 1
 
+#Verifier's function
 def verify_proof(gs,hs,hu,g_bolds,h_bolds,Vs,y,z,x,phi,t_bar):
 
     zs_m=np.ones(m)
