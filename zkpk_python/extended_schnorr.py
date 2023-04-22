@@ -22,24 +22,28 @@ def extended_schnorr_proof(g,P,a,p,q):
         L=1
         R=1
         for i in range(n_prime):
-            L*=pow(g_r[i],int(a_l[i]),p)%p
-            R*=pow(g_l[i],int(a_r[i]),p)%p
+            L=L*pow(g_r[i],int(a_l[i]),p)%p
+            R=R*pow(g_l[i],int(a_r[i]),p)%p
         Ls.append(L)
         Rs.append(R)
 
         #step 2-3-4 #
         x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P}),q)
-        x_1= pow(x, q-1,p)
+        rand=0
+        while x==0:
+            x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P, "rand":rand}),q)
+            rand+=1
+        x_1= pow(x, q-2,q)
         xs.append(x)
 
         #step 5#
         g_prime=[]
         for i in range(n_prime):
             g_prime.append((pow(g_r[i],x,p)*pow(g_l[i],x_1,p))% p)
-        x2=pow(x,2,p)
-        x_2=pow(x,-2,p)
+        x2=pow(x,2,q)
+        x_2=pow(x,q-3,q)
         P_prime=(pow(L,x2,p)*P)%p * pow(R,x_2,p) %p
-        a_prime=((a_r*x_1)%q+ (a_l*x)%q)%q   
+        a_prime=((a_r*(x_1))%q+ (a_l*x)%q)%q   
         return proof(g_prime,P_prime,a_prime,n_prime)
     if len(g)%2 !=0:
         ValueError()
@@ -50,7 +54,7 @@ def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
     n_prime=len(g)
     a_prime=a
     g_prime=g
-    P_prime=p
+    P_prime=P
     i=0
     while(n_prime >1):
         #step 1#
@@ -62,24 +66,25 @@ def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
 
         g_prime=[]
         x=xs[i]
-        x_1=pow(x,q-1,p)
+        x_1=pow(x,q-2,q)
         for j in range(n_prime):            
             g_prime.append((pow(g_r[j],x,p)*pow(g_l[j],x_1,p))% p)
         
-        x2=pow(x,2,p)
-        x_2=pow(x,-2,p)
+        x2=pow(x,2,q)
+        x_2=pow(x,q-3,q)
         P_prime=(pow(Ls[i],x2,p)*P_prime)%p * pow(Rs[i],x_2,p) %p
         i+=1
-    if P==pow(g_prime[0],int(a_prime[0]),p):
+    if P_prime==pow(g_prime[0],int(a_prime[0]),p):
         return True
+    print(P,pow(g_prime[0],int(a_prime[0]),p))
     return False
 
 def test():
-    g=[3,5]
-    P=2 #3^2%7=2, 5^3%7=1, 2*1%5=2
+    g=[3,4]
+    P=1 #3^2%23=9, 4^3%23=18, 9*18%23=1
     a=[2,3]
-    p=7
-    q=6
+    p=23
+    q=11
     a,xs,Ls,Rs=extended_schnorr_proof(g,P,np.array(a),p,q)
     assert extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q)
 test()

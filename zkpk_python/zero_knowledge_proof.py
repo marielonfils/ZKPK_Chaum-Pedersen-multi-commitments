@@ -85,20 +85,24 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             S*=pow(h_bolds[i][j],s_Rs[i][j],G.p) % G.p
     
     #step 2 - 3 - 4#
-    y = hashg(json.dumps({"A": A,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
-    z = hashg(json.dumps({"S": S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
-    #TODO : verify hashes ?
+    y = hashg(json.dumps({"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
+    rand=0
+    while y==0:
+        y = hashg(json.dumps({"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs, "rand":rand}),G.q)
+        rand+=1
+    z = hashg(json.dumps({"A": A,"S": S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs, "r":42}),G.q)
+    rand =0
+    while z==0:
+        z = hashg(json.dumps({"A": A,"S": S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs, "r":42,"rand":rand}),G.q)
+        
     
-
-    #step 4#
-    #TODO : verify that we have nothing todo here
 
     #step 5#
     tau1 = G.random_exp()
     tau2 = G.random_exp()
     T1=pow(h,tau1,G.p)
     T2=pow(h,tau2,G.p)
-    #TODO: compute (t0s),t1s and t2s
+    #TODO: compute (t0s),t  1s and t2s
     #t0s=np.ones(l)
     #TODO check that t1s and t2s contain int for pow function below
     t1s=np.ones(l)
@@ -108,16 +112,17 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         T2*= pow(gs[i],int(t2s[i]),G.p) % G.p
 
     #step 6 - 7 -8#
-    #TODO : est-ce qu'il faut ajouter A,S,y,z,tau1,tau2,t0s,t1s,t2s dans le hash ?
-    x = hashg(json.dumps({"T1": T1,"T2":T2,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
-    
+    x = hashg(json.dumps({"T1": T1,"T2":T2,"A": A,"S":S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
+    rand=0
+    while x==0:
+        x = hashg(json.dumps({"T1": T1,"T2":T2,"A": A,"S":S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs,"rand":rand}),G.q)
+        rand+=1
     #step 9#
     ls=[]
     rs=[]
     zs_1=z*np.ones(m)
     zs_m=np.ones(m)
     zs_m_i= pow(z,2,G.q)
-    #TODO : \mathbf{y}^m c'est bien un vecteur (1,y,...y^m) ?
     ys_m=np.ones(m)
     ys_m_i=1
     x_2=pow(x,2,G.q)
@@ -133,9 +138,9 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         #TODO verify this expression below
         for i in range(m):            
             rs_i.append(((rhs[i]*ys_m[i])%G.q + zs_m[i]) %G.q)
-            zs_m*=z%G.q
+            #zs_m*=z%G.q
         rs.append(rs_i)
-    t_hats= [np.dot(np.array(ls[j]),np.array(rs[j]).T) % G.q for j in range(l)]
+    t_hats= [np.dot(np.array(ls[j]),np.array(rs[j]).T) % G.q for j in range(l)] #TODO try without transposing
     tau_x= tau2*x_2 %G.q + tau1*x %G.q 
     for j in range(1,m-1):
         tau_x+= zs_m[j]*gammas[j-1] % G.q
@@ -144,8 +149,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     mu=alpha+rho*x % G.q
 
     #step 10 - 11 - 12#
-    #TODO : verify if we need to add other things in the hash
-    phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
+    phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu,"T1": T1,"T2":T2,"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
 
     #step 13#
     t_bar =0
@@ -177,23 +181,19 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         phi_i*=phi_1 % G.q
 
     delta= np.sum(ys_m)* (z-pow(z,2,G.q)) % G.q 
-    den=pow(h,tau_x,G.p)
-    P_bar = pow(den,G.q-1,G.p) * pow(T1,x,G.p) % G.p * pow(T2,x_2,G.p) * G.p
+    P_bar = pow(h,G.q-tau_x,G.p) * pow(T1,x,G.p) % G.p * pow(T2,x_2,G.p) * G.p
     for i in range(m-1):
         delta-= zs_m[i] %G.q
         P_bar *= pow(Vs[i],int(zs_m[i]),G.p) % G.p
     delta-=zs_m[m-1]*z %G.q
 
-    P=A*S % G.p    
+    P=A*pow(S,x,G.p) % G.p    
     for j in range(l):
         P_bar*= pow(hs[j],int(phis_l[j]),G.p) % G.p
         P_bar*= pow(gs[j],int(delta),G.p) %G.p
         for i in range(m):
-            den = pow(int(g_bolds_prime[j][i]),int(z*phis_l[j] % G.q), G.p )
-            P*= pow(den,G.q-1,G.p) % G.p #%G.p#pow(g_bolds_prime[j][i], -z*phis_l[j] % G.q, G.p) %G.p
-            #TODO verify the expression below
-            P*= pow(int(h_bolds_prime[j][i]), int((z*ys_m[i]+zs_m[i]) %G.q),G.p) % G.p
-            P=1    
+            P*= pow(int(g_bolds_prime[j][i]),G.q-int(z*phis_l[j] % G.q),G.p) % G.p #%G.p#pow(g_bolds_prime[j][i], -z*phis_l[j] % G.q, G.p) %G.p
+            P*= pow(int(h_bolds_prime[j][i]), int((z*ys_m[i]+zs_m[i]) %G.q),G.p) % G.p   
     
     #step 16#
     #TODO : Bulletproof
@@ -236,7 +236,6 @@ def verify_proof(gs,hs,hu,g_bolds,h_bolds,Vs,y,z,x,phi,t_bar):
             y_i/=y % G.q
         phi_i/=phi % G.q
     
-    #TODO compute delta
     delt= delta(y,z)
     #TODO verify how to compute/receive A, S, tau_x, T1, T2 
     #P=A*S % G.p
@@ -246,7 +245,6 @@ def verify_proof(gs,hs,hu,g_bolds,h_bolds,Vs,y,z,x,phi,t_bar):
         P_bar*= pow(g[j],delt,G.p)
         for i in range(m):
             P*= pow(g_bolds_prime[j][i], -z*phis_l[j] % G.q, G.p) %G.p
-            #TODO verify the expression below
             P*= pow(h_bolds_prime[j][i], z*ys_m[i]+zs_m[i]) % G.p
     
     for i in range(m):
