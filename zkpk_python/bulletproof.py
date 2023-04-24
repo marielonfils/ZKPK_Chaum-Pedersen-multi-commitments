@@ -2,15 +2,15 @@ import numpy as np
 import json
 from utils.hash import hashg
 
-Ls=[]
-Rs=[]
-xs=[]
 
-def bullet_proof(gs,hs,u,P,a_s,bs,p,q):
 
-    def proof(gs,hs,P,a_s,bs,n):
+def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
+    Ls=[]
+    Rs=[]
+    xs=[]
+    def proof(gs,hs,P,u,a_s,bs,n):
         if n== 1:
-            return (a_s,bs,Ls,Rs,xs)
+            return a_s,bs,Ls,Rs,xs
         
         #step 1#
         n_prime=int(n/2)
@@ -36,10 +36,11 @@ def bullet_proof(gs,hs,u,P,a_s,bs,p,q):
         Rs.append(R)
 
         #step 2-3-4 #
-        x = hashg(json.dumps({"L": L,"R":R, "g" :gs, "P":P}),q)
+        x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
+        
         rand=0
         while x==0:
-            x = hashg(json.dumps({"L": L,"R":R, "g" :gs, "P":P, "rand":rand}),q)
+            x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q, "rand":rand}),q)
             rand+=1
         x_1= pow(x, q-2,q)
         xs.append(x)
@@ -56,17 +57,27 @@ def bullet_proof(gs,hs,u,P,a_s,bs,p,q):
         a_prime=((a_r*(x_1))%q+ (a_l*x)%q)%q 
         b_prime=((b_r*x)%q+(b_l*(x_1))%q)%q  
 
-        return proof(g_prime,h_prime,P_prime,a_prime,b_prime,n_prime)
+
+        return proof(g_prime,h_prime,P_prime,u,a_prime,b_prime,n_prime)#!
 
     if len(gs)%2 !=0:
         ValueError()
-    return proof(gs,hs,P,a_s,bs,len(gs))
+    x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
+    rand=0
+    while x==0:
+        x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q,"rand":rand}),q)
+        rand+=1
+    u_xc=pow(u,x*c%q,p)
+    u_x=pow(u,x+1,p)
+    return proof(gs,hs,P*u_xc%p,u_x,a_s,bs,len(gs)),x
+    #return proof(gs,hs,P,u,a_s,bs,len(gs)),1
 
-def bullet_verification(gs,hs,u,P,a,b,xs,Ls,Rs,p,q):
+def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
     n_prime=len(gs)
     g_prime=gs
     h_prime=hs
-    P_prime=P
+    P_prime=P*pow(u,x*c%q,p)%p
+    u_prime=pow(u,x+1,p)
     i=0
     while(n_prime >1):
         #step 1#
@@ -91,8 +102,8 @@ def bullet_verification(gs,hs,u,P,a,b,xs,Ls,Rs,p,q):
         P_prime=(pow(Ls[i],x2,p)*P_prime)%p * pow(Rs[i],x_2,p) %p
         i+=1
 
-    c=int(a[0]*b[0] %q)
-    u_c=pow(u,c,p)
+    c_prime=int(a[0]*b[0] %q)
+    u_c=pow(u_prime,c_prime,p)
     if P_prime==((pow(g_prime[0],int(a[0]),p) * pow(h_prime[0],int(b[0]),p) % p )*u_c %p):
         return True
     return False
@@ -103,10 +114,11 @@ def test():
     P=4 #3^2%23=9, 4^3%23=18, 9*18%23=1
     a=[2,3]
     b=[2,3] #<a,b> = 13=2mod 11
+    c=2
     u = 2  #u^(<a,b>)=4
     p=23
     q=11
-    a,b,Ls,Rs,xs=bullet_proof(g,h,u,P,np.array(a),np.array(b),p,q)
-    print(a,b,xs,Ls,Rs)
-    assert bullet_verification(g,h,u,P,a,b,xs,Ls,Rs,p,q)
+    #x=2
+    (a,b,Ls,Rs,xs),x=bullet_proof(g,h,P,u,np.array(a),np.array(b),c,p,q)
+    assert bullet_verification(g,h,P,u,a,b,c,xs,x,Ls,Rs,p,q)
 test()

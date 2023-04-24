@@ -76,7 +76,6 @@ def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
         i+=1
     if P_prime==pow(g_prime[0],int(a_prime[0]),p):
         return True
-    print(P,pow(g_prime[0],int(a_prime[0]),p))
     return False
 
 def test():
