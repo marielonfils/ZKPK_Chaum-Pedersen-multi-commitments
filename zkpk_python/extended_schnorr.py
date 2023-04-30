@@ -2,11 +2,10 @@ import numpy as np
 import json
 from utils.hash import hashg
 
-xs=[]
-Ls=[]
-Rs=[]
-
 def extended_schnorr_proof(g,P,a,p,q):
+    xs=[]
+    Ls=[]
+    Rs=[]
     def proof(g,P,a,n):
 
         if n==1:
@@ -22,8 +21,8 @@ def extended_schnorr_proof(g,P,a,p,q):
         L=1
         R=1
         for i in range(n_prime):
-            L=L*pow(g_r[i],int(a_l[i]),p)%p
-            R=R*pow(g_l[i],int(a_r[i]),p)%p
+            L=L*pow(int(g_r[i]),int(a_l[i]),p)%p
+            R=R*pow(int(g_l[i]),int(a_r[i]),p)%p
         Ls.append(L)
         Rs.append(R)
 
@@ -86,4 +85,4 @@ def test():
     q=11
     a,xs,Ls,Rs=extended_schnorr_proof(g,P,np.array(a),p,q)
     assert extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q)
-test()
+#test()

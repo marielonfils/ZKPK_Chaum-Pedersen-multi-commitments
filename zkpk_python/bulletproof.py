@@ -28,19 +28,19 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         L=pow(u,c_L,p)
         R=pow(u,c_R,p)
         for i in range(n_prime):
-            L= L*pow(g_r[i],int(a_l[i]),p)%p
-            L= L*pow(h_l[i],int(b_r[i]),p)%p
-            R= R*pow(g_l[i],int(a_r[i]),p)%p
-            R= R*pow(h_r[i],int(b_l[i]),p)%p
+            L= L*pow(int(g_r[i]),int(a_l[i]),p)%p
+            L= L*pow(int(h_l[i]),int(b_r[i]),p)%p
+            R= R*pow(int(g_l[i]),int(a_r[i]),p)%p
+            R= R*pow(int(h_r[i]),int(b_l[i]),p)%p
         Ls.append(L)
         Rs.append(R)
 
         #step 2-3-4 #
-        x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
+        x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
         
         rand=0
         while x==0:
-            x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q, "rand":rand}),q)
+            x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q, "rand":rand}),q)
             rand+=1
         x_1= pow(x, q-2,q)
         xs.append(x)
@@ -49,8 +49,8 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         g_prime=[]
         h_prime=[]
         for i in range(n_prime):
-            g_prime.append((pow(g_r[i],x,p)*pow(g_l[i],x_1,p))% p)
-            h_prime.append((pow(h_r[i],x_1,p)*pow(h_l[i],x,p))% p)
+            g_prime.append((pow(int(g_r[i]),x,p)*pow(int(g_l[i]),x_1,p))% p)
+            h_prime.append((pow(int(h_r[i]),x_1,p)*pow(int(h_l[i]),x,p))% p)
         x2=pow(x,2,q)
         x_2=pow(x,q-3,q)
         P_prime=(pow(L,x2,p)*P)%p * pow(R,x_2,p) %p
@@ -62,13 +62,13 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
 
     if len(gs)%2 !=0:
         ValueError()
-    x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
+    x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
     rand=0
     while x==0:
-        x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.tolist(),"c":c,"u":u,"P":P,"p":p,"q":q,"rand":rand}),q)
+        x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q,"rand":rand}),q)
         rand+=1
     u_xc=pow(u,x*c%q,p)
-    u_x=pow(u,x+1,p)
+    u_x=pow(u,x,p)
     return proof(gs,hs,P*u_xc%p,u_x,a_s,bs,len(gs)),x
     #return proof(gs,hs,P,u,a_s,bs,len(gs)),1
 
@@ -77,7 +77,7 @@ def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
     g_prime=gs
     h_prime=hs
     P_prime=P*pow(u,x*c%q,p)%p
-    u_prime=pow(u,x+1,p)
+    u_prime=pow(u,x,p)
     i=0
     while(n_prime >1):
         #step 1#
@@ -111,7 +111,7 @@ def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
 def test():
     g=[3,4]
     h=[3,4]
-    P=4 #3^2%23=9, 4^3%23=18, 9*18%23=1
+    P=1 #3^2%23=9, 4^3%23=18, 9*18%23=1
     a=[2,3]
     b=[2,3] #<a,b> = 13=2mod 11
     c=2
@@ -121,4 +121,4 @@ def test():
     #x=2
     (a,b,Ls,Rs,xs),x=bullet_proof(g,h,P,u,np.array(a),np.array(b),c,p,q)
     assert bullet_verification(g,h,P,u,a,b,c,xs,x,Ls,Rs,p,q)
-test()
+#test()
