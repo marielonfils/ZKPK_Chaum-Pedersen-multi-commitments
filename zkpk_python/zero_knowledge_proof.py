@@ -10,7 +10,6 @@ from extended_schnorr import extended_schnorr_proof, extended_schnorr_verificati
 # groups size
 l=4
 m=4
-#p=7
 
 # generators
 G=eg.gen_group()
@@ -35,7 +34,6 @@ for _ in range(l):
 Vs=[]
 vs=np.random.randint(2,size=(l,m))
 #TODO!!!
-
 gammas=[]
 for i in range(m):
     gammas_i=G.random_exp()
@@ -55,7 +53,7 @@ def delta(y,z):
     z_2=pow(z,2,G.q)
     z_m_i=z_2*z % G.q
     z_m=0
-    for i in range(m):
+    for _ in range(m):
         y_m=(y_m +y_m_i)%G.q
         y_m_i*=y % G.q
         z_m= (z_m+z_m_i)%G.q
@@ -145,10 +143,8 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         ls.append((a_Ls[j]-zs_1)%G.q+s_Ls[j]*x %G.q%G.q)
         rs_i=[]
         rhs=np.array((a_Rs[j]+zs_1)%G.q+s_Rs[j]*x%G.q)%G.q
-        #TODO verify this expression below
         for i in range(m):            
             rs_i.append(((rhs[i]*ys_m[i])%G.q + zs_m[i]) %G.q)
-            #zs_m*=z%G.q
         rs.append(rs_i)
     #9.3
     t_hats= [np.dot(np.array(ls[j]),np.array(rs[j]).T) % G.q for j in range(l)] #TODO try without transposing
@@ -156,7 +152,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     tau_x= tau2*x_2 %G.q + tau1*x %G.q 
     for j in range(m):
         tau_x= (tau_x+ zs_m[j]*gammas[j]) % G.q
-    #tau_x+= (zs_m[m-1]*z) %G.q *gammas[m-1] % G.q
     tau_x=int(tau_x)
     #9.5
     mu=alpha+rho*x % G.q
@@ -167,6 +162,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     while phi==0:
         phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu,"T1": T1,"T2":T2,"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs,"rand":rand}),G.q)
         rand+=1
+
     #step 13#
     t_bar =0
     phis_l=np.zeros(l)
@@ -197,7 +193,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     for i in range(m-1):
         delta = (delta - zs_m[i+1]) %G.q
         P_bar = P_bar * pow(Vs[i],int(zs_m[i]),G.p) % G.p
-    #TDO verify delta
     delta=(delta-zs_m[m-1]*z %G.q)%G.q
     P_bar = P_bar * pow(Vs[m-1],int(zs_m[m-1]),G.p) % G.p
     P_ext=P_bar
@@ -208,21 +203,14 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         P_ext= P_ext*term%G.p
         P_bar=  P_bar*pow(hs[j],int(phis_l[j]),G.p) % G.p     
         for i in range(m):
-            P= P* pow(int(g_bolds_prime[j][i]),G.q-int(z*phis_l[j] % G.q),G.p) % G.p #%G.p#pow(g_bolds_prime[j][i], -z*phis_l[j] % G.q, G.p) %G.p
+            P= P* pow(int(g_bolds_prime[j][i]),G.q-int(z*phis_l[j] % G.q),G.p) % G.p
             P= P* pow(int(h_bolds_prime[j][i]), int((z*ys_m[i]%G.q+zs_m[i]) %G.q),G.p) % G.p  
-    """for i in range(m):
-        term=pow(Vs[i],int(zs_m[i]),G.p)
-        P_bar = P_bar*term % G.p
-        P_ext=P_ext*term % G.p
-        print(term)"""
-    #step 16#
-    #TODO : Bulletproof u?, c?
     
+    #step 16#
+    #TODO : Bulletproof u?    
     phis_l_1m = np.repeat(phis_l,m).reshape((l,m))
     a_1=np.multiply(np.array(ls),phis_l_1m)%G.q
     b_1=np.array(rs)
-    c_1=a_1@b_1.T
-    c_2=np.dot(t_hats,phis_l)
     g_bolds=np.array(g_bolds)
     h_bolds=np.array(h_bolds)
     t_hats=np.array(t_hats)
@@ -230,10 +218,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     bp2=bullet_proof(gs,hs,P_bar,u,t_hats.flatten(),phis_l.flatten(),int(t_bar),G.p,G.q)
 
     #step 17#
-    #TODO : extended schnorr
-    e1=extended_schnorr_proof(gs,P_ext,t_hats,G.p,G.q)
-
-    
+    e1=extended_schnorr_proof(gs,P_ext,t_hats,G.p,G.q)    
 
     return A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar,bp1,bp2,e1
 
@@ -274,7 +259,6 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar
     delt= delta(y,z)
     #TODO verify how to compute/receive A, S, tau_x, T1, T2 
     P=A*pow(S,x,G.p) % G.p
-
     P_bar = pow(h,G.q-tau_x,G.p) * pow(T1,x,G.p) % G.p * pow(T2,x_2,G.p) % G.p
     P_bar_e1=P_bar
     #TODO fusionner avec boucles précédentes !
@@ -292,19 +276,21 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar
     
     #step 16#
     (a_bp1,b_bp1,Ls_bp1,Rs_bp1,xs_bp1),x_bp1=bp_1
-    if not bullet_verification(g_bolds_prime.flatten().astype(int).tolist(),h_bolds_prime.flatten().astype(int).tolist(),P*pow(h,G.q-mu,G.p)%G.p,u,a_bp1,b_bp1,int(t_bar),xs_bp1,x_bp1,Ls_bp1,Rs_bp1,G.p,G.q):
+    if not bullet_verification(g_bolds_prime.flatten().astype(int).tolist(),h_bolds_prime.flatten().astype(int).tolist(),
+                               P*pow(h,G.q-mu,G.p)%G.p,u,a_bp1,b_bp1,int(t_bar),xs_bp1,x_bp1,Ls_bp1,Rs_bp1,G.p,G.q):
         return 1
 
     (a_bp2,b_bp2,Ls_bp2,Rs_bp2,xs_bp2),x_bp2=bp_2
     if not bullet_verification(gs,hs,P_bar,u,a_bp2,b_bp2,int(t_bar),xs_bp2,x_bp2,Ls_bp2,Rs_bp2,G.p,G.q):
-        return 2
-    
+        return 2    
 
     #step 17#
     a_e1,xs_e1,Ls_e1,Rs_e1=e1
     if not extended_schnorr_verification(gs,P_bar_e1,a_e1,xs_e1,Ls_e1,Rs_e1,G.p,G.q):
         return 3
     return 0
+
+
 n_false=0
 for i in range(100):
     A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar,bp1,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
