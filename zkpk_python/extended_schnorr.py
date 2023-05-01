@@ -44,13 +44,23 @@ def extended_schnorr_proof(g,P,a,p,q):
         P_prime=(pow(L,x2,p)*P)%p * pow(R,x_2,p) %p
         a_prime=((a_r*(x_1))%q+ (a_l*x)%q)%q   
         return proof(g_prime,P_prime,a_prime,n_prime)
-    if len(g)%2 !=0:
-        ValueError()
-    return proof(g,P,a,len(g))
+    n=len(g)
+    if not((n != 0) and (n & (n-1) == 0)):
+        raise ValueError("basis are not a power of 2")
+    if len(a)!=n :
+        raise ValueError("vectors have not the same length")
+    return proof(g,P,a,n)
 
 
 def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
     n_prime=len(g)
+    n_prime2=len(Ls)
+    if not((n_prime != 0) and (n_prime & (n_prime-1) == 0)):
+        raise ValueError("basis are not a power of 2")
+    if 2**n_prime2!=n_prime:
+        raise ValueError("basis are not a power of 2")
+    if len(xs)!=n_prime2 or len(Rs)!=n_prime2:
+        raise ValueError("vectors have not the same length")
     a_prime=a
     g_prime=g
     P_prime=P
@@ -67,7 +77,7 @@ def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
         x=xs[i]
         x_1=pow(x,q-2,q)
         for j in range(n_prime):            
-            g_prime.append((pow(g_r[j],x,p)*pow(g_l[j],x_1,p))% p)
+            g_prime.append((pow(int(g_r[j]),x,p)*pow(int(g_l[j]),x_1,p))% p)
         
         x2=pow(x,2,q)
         x_2=pow(x,q-3,q)

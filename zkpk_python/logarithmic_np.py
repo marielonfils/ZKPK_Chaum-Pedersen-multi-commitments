@@ -17,34 +17,39 @@ m=128
 G=eg.gen_group()
 h=eg.random_generator(G.p,G.q)
 u=eg.random_generator(G.p,G.q)
-gs=[]
-hs=[]
-g_bolds=[]
-h_bolds=[]
-for _ in range(l):
-    gs.append(eg.random_generator(G.p, G.q))
-    hs.append(eg.random_generator(G.p, G.q))
-    g_bolds_i=[]
-    h_bolds_i=[]
-    for _ in range(m):
-        g_bolds_i.append(eg.random_generator(G.p, G.q))
-        h_bolds_i.append(eg.random_generator(G.p, G.q))
-    g_bolds.append(g_bolds_i)
-    h_bolds.append(h_bolds_i)
+gs=np.zeros(l)
+hs=np.zeros(l)
+g_bolds=np.zeros((l,m))
+h_bolds=np.zeros((l,m))
+for j in range(l):
+    gs[j]=eg.random_generator(G.p, G.q)
+    hs[j]=eg.random_generator(G.p, G.q)
+    g_bolds_i=np.zeros(m)
+    h_bolds_i=np.zeros(m)
+    for i in range(m):
+        g_bolds_i[i]=eg.random_generator(G.p, G.q)
+        h_bolds_i[i]=eg.random_generator(G.p, G.q)
+    g_bolds[j,:]=g_bolds_i
+    h_bolds[j,:]=h_bolds_i
+
+gs_list=gs.astype(int).tolist()
+hs_list=hs.astype(int).tolist()
+g_bolds_list=g_bolds.astype(int).tolist()
+h_bolds_list=h_bolds.astype(int).tolist()
 
 # votes and commitment on votes
-Vs=[]
+Vs=np.zeros(m)
 vs=np.random.randint(2,size=(l,m))
 #TODO!!!
-gammas=[]
+gammas=np.zeros(m)
 for i in range(m):
     gammas_i=G.random_exp()
-    gammas.append(gammas_i)
+    gammas[i]=gammas_i
     product=pow(h,gammas_i,G.p)
     for j in range(l):
-        vs[j,i]=(i+j)%2
-        product= product *pow(gs[j],int(vs[j][i]),G.p)%G.p
-    Vs.append(int(product))
+        product= product *pow(int(gs[j]),int(vs[j][i]),G.p)%G.p
+    Vs[i]=product
+Vs_list=Vs.astype(int).tolist()
 
 
 def delta(y,z):
@@ -84,21 +89,23 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     S=pow(h,rho,G.p)
     for i in range(l):
         for j in range(m):
-            A=A*pow(g_bolds[i][j],a_Ls[i][j].item(),G.p) % G.p
-            A=A*pow(h_bolds[i][j],int(a_Rs[i][j].item()),G.p) % G.p
-            S=S*pow(g_bolds[i][j],int(s_Ls[i][j]),G.p) % G.p
-            S=S*pow(h_bolds[i][j],int(s_Rs[i][j]),G.p) % G.p
+            A=A*pow(int(g_bolds[i][j]),int(a_Ls[i][j]),G.p) % G.p
+            A=A*pow(int(h_bolds[i][j]),int(a_Rs[i][j]),G.p) % G.p
+            S=S*pow(int(g_bolds[i][j]),int(s_Ls[i][j]),G.p) % G.p
+            S=S*pow(int(h_bolds[i][j]),int(s_Rs[i][j]),G.p) % G.p
+    """A=A*np.prod(np.power(g_bolds,a_Ls)%G.p)%G.p*np.prod(np.power(h_bolds,a_Rs)%G.p)%G.p
+    S=S*np.power(g_bolds,s_Ls)%G.p*np.power(h_bolds,s_Rs)%G.p"""
     
     #step 2 - 3 - 4#
-    y = hashg(json.dumps({"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
+    y = hashg(json.dumps({"A": A,"S":S, "gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list}),G.q)
     rand=0
     while y==0:
-        y = hashg(json.dumps({"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs, "rand":rand}),G.q)
+        y = hashg(json.dumps({"A": A,"S":S, "gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list, "rand":rand}),G.q)
         rand+=1
-    z = hashg(json.dumps({"A": A,"S": S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs, "r":42}),G.q)
+    z = hashg(json.dumps({"A": A,"S": S,"gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list, "r":42}),G.q)
     rand =0
     while z==0:
-        z = hashg(json.dumps({"A": A,"S": S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs, "r":42,"rand":rand}),G.q)
+        z = hashg(json.dumps({"A": A,"S": S,"gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list, "r":42,"rand":rand}),G.q)
     #step 4
     zs_1=z*np.ones(m)
     zs_m=np.ones(m)
@@ -127,86 +134,97 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     T2=pow(h,tau2,G.p)
     
     for i in range(l):
-        T1 = T1* pow(gs[i],int(t1s[i]),G.p) % G.p
-        T2 = T2* pow(gs[i],int(t2s[i]),G.p) % G.p
+        T1 = T1* pow(int(gs[i]),int(t1s[i]),G.p) % G.p
+        T2 = T2* pow(int(gs[i]),int(t2s[i]),G.p) % G.p
 
     #step 6 - 7 -8#
-    x = hashg(json.dumps({"T1": T1,"T2":T2,"A": A,"S":S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
+    x = hashg(json.dumps({"T1": T1,"T2":T2,"A": A,"S":S,"gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list}),G.q)
     rand=0
     while x==0:
-        x = hashg(json.dumps({"T1": T1,"T2":T2,"A": A,"S":S,"gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs,"rand":rand}),G.q)
+        x = hashg(json.dumps({"T1": T1,"T2":T2,"A": A,"S":S,"gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list,"rand":rand}),G.q)
         rand+=1
     #step 9#
     #9.1 - 9.2
-    ls=[]
-    rs=[]
+    ls=np.zeros((l,m))
+    rs=np.zeros((l,m))
+    t_hats=np.zeros(l)
     x_2=pow(x,2,G.q)
-    for j in range(l):
-        ls.append((a_Ls[j]-zs_1)%G.q+s_Ls[j]*x %G.q%G.q)
-        rs_i=[]
+    """for j in range(l):
+        ls[j,:]=(a_Ls[j]-zs_1)%G.q+s_Ls[j]*x %G.q%G.q
+        rs_i=np.zeros(m)
         rhs=np.array((a_Rs[j]+zs_1)%G.q+s_Rs[j]*x%G.q)%G.q
         for i in range(m):            
-            rs_i.append(((rhs[i]*ys_m[i])%G.q + zs_m[i]) %G.q)
-        rs.append(rs_i)
+            rs_i[i]=((rhs[i]*ys_m[i])%G.q + zs_m[i]) %G.q
+        rs[j,:]=rs_i
+        t_hats[j]=np.dot(ls[j],rs[j].T)%G.q"""
+    ls=((a_Ls-zs_1_l)%G.q+s_Ls*x%G.q)%G.q
+    rs=(np.multiply(((a_Rs+zs_1_l)%G.q+s_Rs*x%G.q)%G.q,ys_m_l)%G.q+zs_m_l)%G.q
+    t_hats=np.einsum('ij,ij->i',ls,rs)%G.q
     #9.3
-    t_hats= [np.dot(np.array(ls[j]),np.array(rs[j]).T) % G.q for j in range(l)] #TODO try without transposing
+    #t_hats= [np.dot(ls[j],rs[j].T) % G.q for j in range(l)] #TODO try without transposing
     #9.4
     tau_x= tau2*x_2 %G.q + tau1*x %G.q 
-    for j in range(m):
-        tau_x= (tau_x+ zs_m[j]*gammas[j]) % G.q
+    """for i in range(m):
+        tau_x= (tau_x+ zs_m[i]*gammas[i]) % G.q"""
+    tau_x=(tau_x+ np.sum(np.multiply(zs_m,gammas)%G.q))%G.q
     tau_x=int(tau_x)
     #9.5
     mu=alpha+rho*x % G.q
 
     #step 10 - 11 - 12#
-    phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu,"T1": T1,"T2":T2,"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs}),G.q)
+    phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu,"T1": T1,"T2":T2,"A": A,"S":S, "gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list}),G.q)
     rand=0
     while phi==0:
-        phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu,"T1": T1,"T2":T2,"A": A,"S":S, "gs":gs, "hs" :hs, "h":h, "u":u, "g_bolds":g_bolds, "h_bolds":h_bolds, "Vs":Vs,"rand":rand}),G.q)
+        phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu,"T1": T1,"T2":T2,"A": A,"S":S, "gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list,"rand":rand}),G.q)
         rand+=1
 
     #step 13#
-    t_bar =0
+    """t_bar =0
     phis_l=np.zeros(l)
     phi_j=1
     for j in range(l):
         t_bar= (t_bar+t_hats[j]*phi_j%G.q) % G.q
         phis_l[j]=phi_j
-        phi_j= phi_j *phi % G.q
+        phi_j= phi_j *phi % G.q"""
 
     #step 15#
-    #15.1 -15.2
+    #15.1 -15.4
     h_bolds_prime=np.zeros((l,m))
     g_bolds_prime=np.zeros((l,m))    
     phi_i=1
     y_1=pow(y,G.q-2,G.q)
     phi_1=pow(phi,G.q-2,G.q)
-    for j in range(l):
-        y_i=1
-        for i in range(m):
-            # TODO : more efficient inverse computation
-            h_bolds_prime[j][i]= pow(h_bolds[j][i],y_i,G.p)
-            g_bolds_prime[j][i]= pow(g_bolds[j][i],phi_i,G.p)
-            y_i=y_i*y_1 % G.q
-        phi_i=phi_i*phi_1 % G.q
-    #15.3 -15.4
-    delta= np.sum(ys_m)%G.q* (z-pow(z,2,G.q)) % G.q 
+    t_bar =0
+    phis_l=np.zeros(l)
+    phi_j=1 
+    delta= np.sum(ys_m)%G.q* (z-pow(z,2,G.q)) % G.q
     P_bar = pow(h,G.q-tau_x,G.p) * pow(T1,x,G.p) % G.p * pow(T2,x_2,G.p) % G.p
     for i in range(m-1):
         delta = (delta - zs_m[i+1]) %G.q
-        P_bar = P_bar * pow(Vs[i],int(zs_m[i]),G.p) % G.p
-    delta=(delta-zs_m[m-1]*z %G.q)%G.q
-    P_bar = P_bar * pow(Vs[m-1],int(zs_m[m-1]),G.p) % G.p
-    P_ext=P_bar
-    P=A*pow(S,x,G.p) % G.p  
+        P_bar = P_bar * pow(int(Vs[i]),int(zs_m[i]),G.p) % G.p
+    delta=int((delta-zs_m[m-1]*z %G.q)%G.q)
+    P_bar = P_bar * pow(int(Vs[m-1]),int(zs_m[m-1]),G.p) % G.p
+    P_ext=P_bar 
+    P=A*pow(S,x,G.p) % G.p        
     for j in range(l):
-        term= pow(gs[j],int(delta),G.p)
+        y_i=1
+        t_bar= (t_bar+t_hats[j]*phi_j%G.q) % G.q
+        phis_l[j]=phi_j
+        term= pow(int(gs[j]),delta,G.p)
         P_bar=  P_bar*term %G.p
         P_ext= P_ext*term%G.p
-        P_bar=  P_bar*pow(hs[j],int(phis_l[j]),G.p) % G.p     
+        P_bar=  P_bar*pow(int(hs[j]),phi_j,G.p) % G.p     
+        phi_j= phi_j *phi % G.q
         for i in range(m):
-            P= P* pow(int(g_bolds_prime[j][i]),G.q-int(z*phis_l[j] % G.q),G.p) % G.p
-            P= P* pow(int(h_bolds_prime[j][i]), int((z*ys_m[i]%G.q+zs_m[i]) %G.q),G.p) % G.p  
+            h_ij=pow(int(h_bolds[j][i]),y_i,G.p)
+            g_ij= pow(int(g_bolds[j][i]),phi_i,G.p)
+            h_bolds_prime[j][i]= h_ij
+            g_bolds_prime[j][i]= g_ij
+            P= P* pow(g_ij,G.q-int(z*phis_l[j] % G.q),G.p) % G.p
+            P= P* pow(h_ij, int((z*ys_m[i]%G.q+zs_m[i]) %G.q),G.p) % G.p  
+            y_i=y_i*y_1 % G.q
+        phi_i=phi_i*phi_1 % G.q          
+            
     
     #step 16#
     #TODO : Bulletproof u?    
@@ -217,10 +235,10 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     h_bolds=np.array(h_bolds)
     t_hats=np.array(t_hats)
     bp1=bullet_proof(g_bolds_prime.flatten().astype(int).tolist(),h_bolds_prime.flatten().astype(int).tolist(),P*pow(h,G.q-mu,G.p)%G.p,u,a_1.flatten(),b_1.flatten(),int(t_bar),G.p,G.q)
-    bp2=bullet_proof(gs,hs,P_bar,u,t_hats.flatten(),phis_l.flatten(),int(t_bar),G.p,G.q)
+    bp2=bullet_proof(gs_list,hs_list,P_bar,u,t_hats.flatten(),phis_l.flatten(),int(t_bar),G.p,G.q)
 
     #step 17#
-    e1=extended_schnorr_proof(gs,P_ext,t_hats,G.p,G.q)    
+    e1=extended_schnorr_proof(gs_list,P_ext,t_hats,G.p,G.q)    
 
     return A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar,bp1,bp2,e1
 
@@ -253,8 +271,8 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar
         phi_i_l= phi_i_l*phi %G.q
         y_i=1
         for i in range(m):
-            h_bolds_prime[j][i]= pow(h_bolds[j][i],y_i,G.p)
-            g_bolds_prime[j][i]= pow(g_bolds[j][i],phi_i,G.p)
+            h_bolds_prime[j][i]= pow(int(h_bolds[j][i]),y_i,G.p)
+            g_bolds_prime[j][i]= pow(int(g_bolds[j][i]),phi_i,G.p)
             y_i=y_i*y_1 % G.q
         phi_i=phi_i*phi_1 % G.q
     #15.3 -15.4
@@ -265,13 +283,13 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar
     P_bar_e1=P_bar
     #TODO fusionner avec boucles précédentes !
     for i in range(m):
-        P_bar = P_bar*pow(Vs[i],int(zs_m[i]),G.p) % G.p
+        P_bar = P_bar*pow(int(Vs[i]),int(zs_m[i]),G.p) % G.p
         P_bar_e1=P_bar
     for j in range(l):    
-        term=pow(gs[j],delt,G.p)     
+        term=pow(int(gs[j]),delt,G.p)     
         P_bar= P_bar*term% G.p
         P_bar_e1=P_bar_e1*term %G.p
-        P_bar= P_bar*pow(hs[j],int(phis_l[j]),G.p) % G.p
+        P_bar= P_bar*pow(int(hs[j]),int(phis_l[j]),G.p) % G.p
         for i in range(m):
             P= P*pow(int(g_bolds_prime[j][i]), int(G.q-z*phis_l[j] % G.q), G.p) %G.p
             P= P*pow(int(h_bolds_prime[j][i]), int(z*ys_m[i]%G.q+zs_m[i] % G.q),G.p)%G.p    
@@ -294,7 +312,7 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar
 
 
 n_false=0
-for i in range(100):
+for i in range(1):
     A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar,bp1,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
     t=verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T1,T2,x,tau_x,mu,phi,t_bar,bp1,bp2,e1)
     if t!=0:

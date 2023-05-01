@@ -59,9 +59,11 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
 
 
         return proof(g_prime,h_prime,P_prime,u,a_prime,b_prime,n_prime)#!
-
-    if len(gs)%2 !=0:
-        ValueError()
+    n=len(gs)
+    if not((n != 0) and (n & (n-1) == 0)):
+        raise ValueError("basis are not a power of 2")
+    if len(hs)!=n or len(a_s)!=n or len(bs)!=n:
+        raise ValueError("vectors have not the same length")
     x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
     rand=0
     while x==0:
@@ -69,11 +71,18 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         rand+=1
     u_xc=pow(u,x*c%q,p)
     u_x=pow(u,x,p)
-    return proof(gs,hs,P*u_xc%p,u_x,a_s,bs,len(gs)),x
-    #return proof(gs,hs,P,u,a_s,bs,len(gs)),1
+    return proof(gs,hs,P*u_xc%p,u_x,a_s,bs,n),x
+
 
 def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
     n_prime=len(gs)
+    n_prime2=len(Ls)
+    if not((n_prime != 0) and (n_prime & (n_prime-1) == 0)):
+        raise ValueError("basis are not a power of 2")
+    if 2**n_prime2!=n_prime:
+        raise ValueError("basis are not a power of 2")
+    if len(hs)!=n_prime or len(Rs)!=n_prime2 or len(xs)!=n_prime2:
+        raise ValueError("vectors have not the same length")
     g_prime=gs
     h_prime=hs
     P_prime=P*pow(u,x*c%q,p)%p
@@ -94,8 +103,8 @@ def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
         x=xs[i]
         x_1=pow(x,q-2,q)
         for j in range(n_prime):            
-            g_prime.append((pow(g_r[j],x,p)*pow(g_l[j],x_1,p))% p)
-            h_prime.append((pow(h_r[j],x_1,p)*pow(h_l[j],x,p))% p)
+            g_prime.append((pow(int(g_r[j]),x,p)*pow(int(g_l[j]),x_1,p))% p)
+            h_prime.append((pow(int(h_r[j]),x_1,p)*pow(int(h_l[j]),x,p))% p)
         
         x2=pow(x,2,q)
         x_2=pow(x,q-3,q)
