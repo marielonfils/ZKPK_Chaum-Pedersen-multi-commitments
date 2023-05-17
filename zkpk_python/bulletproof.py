@@ -1,6 +1,8 @@
 import numpy as np
 import json
 from utils.hash import hashg
+from utils.hash2 import hash_elems
+from gmpy2 import powmod as pow,mpz
 
 
 
@@ -23,24 +25,31 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         h_l=hs[:n_prime]
         h_r=hs[n_prime:]
 
-        c_L=int(np.dot(a_l,b_r)%q)
-        c_R=int(np.dot(a_r,b_l)%q)
+        """c_L=np.dot(a_l,b_r)%q
+        c_R=np.dot(a_r,b_l)%q"""
+        c_L=mpz(0)
+        c_R=mpz(0)
+        for i in range(n_prime):
+            c_L = (c_L+ a_l[i]*b_r[i]%q)%q
+            c_R = (c_R+ a_r[i]*b_l[i]%q)%q
         L=pow(u,c_L,p)
         R=pow(u,c_R,p)
         for i in range(n_prime):
-            L= L*pow(int(g_r[i]),int(a_l[i]),p)%p
-            L= L*pow(int(h_l[i]),int(b_r[i]),p)%p
-            R= R*pow(int(g_l[i]),int(a_r[i]),p)%p
-            R= R*pow(int(h_r[i]),int(b_l[i]),p)%p
+            L= L*pow(g_r[i],a_l[i],p)%p
+            L= L*pow(h_l[i],b_r[i],p)%p
+            R= R*pow(g_l[i],a_r[i],p)%p
+            R= R*pow(h_r[i],b_l[i],p)%p
         Ls.append(L)
         Rs.append(R)
 
         #step 2-3-4 #
-        x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
+        x=mpz(hash_elems(L,R,gs,hs,a_s,bs,c,u,P,p,q, q=q))
+        #x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
         
         rand=0
         while x==0:
-            x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q, "rand":rand}),q)
+            x=mpz(hash_elems(L,R,gs,hs,a_s,bs,c,u,P,p,q,rand, q=q))
+            #x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q, "rand":rand}),q)
             rand+=1
         x_1= pow(x, q-2,q)
         xs.append(x)
@@ -48,15 +57,16 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         #step 5#
         g_prime=[]
         h_prime=[]
-        for i in range(n_prime):
-            g_prime.append((pow(int(g_r[i]),x,p)*pow(int(g_l[i]),x_1,p))% p)
-            h_prime.append((pow(int(h_r[i]),x_1,p)*pow(int(h_l[i]),x,p))% p)
+        a_prime=[]
+        b_prime=[]
         x2=pow(x,2,q)
         x_2=pow(x,q-3,q)
+        for i in range(n_prime):
+            g_prime.append((pow(g_r[i],x,p)*pow(g_l[i],x_1,p))% p)
+            h_prime.append((pow(h_r[i],x_1,p)*pow(h_l[i],x,p))% p)
+            a_prime.append(((a_r[i]*(x_1))%q+(a_l[i]*x)%q)%q)
+            b_prime.append(((b_r[i]*x)%q+(b_l[i]*(x_1))%q)%q)          
         P_prime=(pow(L,x2,p)*P)%p * pow(R,x_2,p) %p
-        a_prime=((a_r*(x_1))%q+ (a_l*x)%q)%q 
-        b_prime=((b_r*x)%q+(b_l*(x_1))%q)%q  
-
 
         return proof(g_prime,h_prime,P_prime,u,a_prime,b_prime,n_prime)#!
     n=len(gs)
@@ -64,10 +74,13 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         raise ValueError("basis are not a power of 2")
     if len(hs)!=n or len(a_s)!=n or len(bs)!=n:
         raise ValueError("vectors have not the same length")
-    x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
+    
+    x=mpz(hash_elems(gs,hs,a_s,bs,c,u,P,p,q, q=q))
+    #x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
     rand=0
     while x==0:
-        x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q,"rand":rand}),q)
+        x=mpz(hash_elems(gs,hs,a_s,bs,c,u,P,p,q,rand, q=q))
+        #x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q,"rand":rand}),q)
         rand+=1
     u_xc=pow(u,x*c%q,p)
     u_x=pow(u,x,p)
@@ -103,31 +116,31 @@ def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
         x=xs[i]
         x_1=pow(x,q-2,q)
         for j in range(n_prime):            
-            g_prime.append((pow(int(g_r[j]),x,p)*pow(int(g_l[j]),x_1,p))% p)
-            h_prime.append((pow(int(h_r[j]),x_1,p)*pow(int(h_l[j]),x,p))% p)
+            g_prime.append((pow(g_r[j],x,p)*pow(g_l[j],x_1,p))% p)
+            h_prime.append((pow(h_r[j],x_1,p)*pow(h_l[j],x,p))% p)
         
         x2=pow(x,2,q)
         x_2=pow(x,q-3,q)
         P_prime=(pow(Ls[i],x2,p)*P_prime)%p * pow(Rs[i],x_2,p) %p
         i+=1
 
-    c_prime=int(a[0]*b[0] %q)
+    c_prime=a[0]*b[0] %q
     u_c=pow(u_prime,c_prime,p)
-    if P_prime==((pow(g_prime[0],int(a[0]),p) * pow(h_prime[0],int(b[0]),p) % p )*u_c %p):
+    if P_prime==((pow(g_prime[0],a[0],p) * pow(h_prime[0],b[0],p) % p )*u_c %p):
         return True
     return False
 
 def test():
-    g=[3,4]
-    h=[3,4]
-    P=1 #3^2%23=9, 4^3%23=18, 9*18%23=1
-    a=[2,3]
-    b=[2,3] #<a,b> = 13=2mod 11
-    c=2
-    u = 2  #u^(<a,b>)=4
-    p=23
-    q=11
+    g=[mpz(3),mpz(4)]
+    h=[mpz(3),mpz(4)]
+    P=mpz(1) #3^2%23=9, 4^3%23=18, 9*18%23=1
+    a=[mpz(2),mpz(3)]
+    b=[mpz(2),mpz(3)] #<a,b> = 13=2mod 11
+    c=mpz(2)
+    u = mpz(2)  #u^(<a,b>)=4
+    p=mpz(23)
+    q=mpz(11)
     #x=2
     (a,b,Ls,Rs,xs),x=bullet_proof(g,h,P,u,np.array(a),np.array(b),c,p,q)
     assert bullet_verification(g,h,P,u,a,b,c,xs,x,Ls,Rs,p,q)
-#test()
+test()

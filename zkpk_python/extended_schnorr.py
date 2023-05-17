@@ -1,6 +1,8 @@
 import numpy as np
 import json
 from utils.hash import hashg
+from utils.hash2 import hash_elems
+from gmpy2 import powmod as pow,mpz
 
 def extended_schnorr_proof(g,P,a,p,q):
     xs=[]
@@ -21,28 +23,33 @@ def extended_schnorr_proof(g,P,a,p,q):
         L=1
         R=1
         for i in range(n_prime):
-            L=L*pow(int(g_r[i]),int(a_l[i]),p)%p
-            R=R*pow(int(g_l[i]),int(a_r[i]),p)%p
+            L=L*pow(g_r[i],a_l[i],p)%p
+            R=R*pow(g_l[i],a_r[i],p)%p
         Ls.append(L)
         Rs.append(R)
 
         #step 2-3-4 #
-        x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P}),q)
+        x=mpz(hash_elems(L,R,g,P, q=q))
+        #x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P}),q)
         rand=0
         while x==0:
-            x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P, "rand":rand}),q)
+            x=mpz(hash_elems(L,R,g,P, q=q))
+            #x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P, "rand":rand}),q)
             rand+=1
         x_1= pow(x, q-2,q)
         xs.append(x)
 
         #step 5#
         g_prime=[]
-        for i in range(n_prime):
-            g_prime.append((pow(g_r[i],x,p)*pow(g_l[i],x_1,p))% p)
+        a_prime=[]
         x2=pow(x,2,q)
         x_2=pow(x,q-3,q)
+        for i in range(n_prime):
+            g_prime.append((pow(g_r[i],x,p)*pow(g_l[i],x_1,p))% p)
+            a_prime.append(((a_r[i]*x_1)%q+ (a_l[i]*x)%q)%q)   
+        
         P_prime=(pow(L,x2,p)*P)%p * pow(R,x_2,p) %p
-        a_prime=((a_r*(x_1))%q+ (a_l*x)%q)%q   
+        
         return proof(g_prime,P_prime,a_prime,n_prime)
     n=len(g)
     if not((n != 0) and (n & (n-1) == 0)):
@@ -83,7 +90,7 @@ def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
         x_2=pow(x,q-3,q)
         P_prime=(pow(Ls[i],x2,p)*P_prime)%p * pow(Rs[i],x_2,p) %p
         i+=1
-    if P_prime==pow(g_prime[0],int(a_prime[0]),p):
+    if P_prime==pow(g_prime[0],a_prime[0],p):
         return True
     return False
 

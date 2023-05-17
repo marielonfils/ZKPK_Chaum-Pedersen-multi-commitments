@@ -32,6 +32,7 @@ for j in range(l):
     g_bolds[j,:]=g_bolds_i
     h_bolds[j,:]=h_bolds_i
 
+
 gs_list=gs.astype(int).tolist()
 hs_list=hs.astype(int).tolist()
 g_bolds_list=g_bolds.astype(int).tolist()
@@ -74,7 +75,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     a_Ls=vs.copy()
     #verify if modulo 2 TODO
     #1.2
-    a_Rs=(a_Ls-np.ones((l,m)))
+    a_Rs=(a_Ls-np.ones((l,m)))%G.q
     #1.3
     alpha=G.random_exp()
     rho=G.random_exp()
