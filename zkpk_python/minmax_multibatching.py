@@ -18,7 +18,7 @@ l=2
 m=2
 n=1
 # generators
-t0=time.time()
+time0=time.time()
 G=eg.ElgamalGroup(p,q)
 """h=eg.random_generator(G.p,G.q)
 u=eg.random_generator(G.p,G.q)
@@ -37,11 +37,13 @@ for j in range(l):
     g_bolds[j,:]=g_bolds_i
     h_bolds[j,:]=h_bolds_i"""
 gs,hs,g_bolds,h_bolds = generate_constants(l,m,n)
+#print(gs)
 """gs=[mpz(2),mpz(2)]
 hs=[mpz(2),mpz(2)]
-g_bolds=[[mpz(3),mpz(3)],[mpz(3),mpz(3)]]
-h_bolds=[[mpz(3),mpz(3)],[mpz(3),mpz(3)]]
-h=mpz(3)
+g_bolds=np.array([[mpz(3),mpz(3)],[mpz(3),mpz(3)]])
+h_bolds=np.array([[mpz(3),mpz(3)],[mpz(3),mpz(3)]])
+print(h_bolds.shape)"""
+"""h=mpz(3)
 g=mpz(3)
 u=mpz(2)"""
 
@@ -52,7 +54,8 @@ h_bolds_list=h_bolds.astype(int).tolist()"""
 
 # votes and commitment on votes
 Vs=np.zeros(m,dtype=object)
-vs=np.random.randint(2,size=(l,m))
+#vs=np.random.randint(2,size=(l,m))
+vs=[[mpz(0),mpz(1)],[mpz(1),mpz(0)]]
 #TODO!!!
 gammas=np.zeros(m,dtype=object)
 for i in range(m):
@@ -64,6 +67,7 @@ for i in range(m):
     Vs[i]=product
 #Vs_list=Vs.astype(int).tolist()
 t00 = time.time()
+
 
 """def delta(y,z):
     # delta(y,z) := (z-z^2) <1^m,y^m> - \sum_{k=1}^m z^{k+2}
@@ -94,7 +98,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             v_j = (v_j+vs[k][i])%G.q
 
         shifted = v_j
-        print(v_j.bit_length(),n,m)
+        #print(v_j.bit_length(),n,m)
         #for j in range(v_j.bit_length()):
         for j in range(n):
             a_i=shifted&1
@@ -197,7 +201,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     ys_m_l=np.broadcast_to(ys_m,(l,m))
     zs_m_l=np.broadcast_to(zs_m,(l,m)) """
     #s_Rs_ys_m=np.zeros((l,m),dtype=object)#np.multiply(ys_m_l,s_Rs)%G.q
-
     #t1s=(np.einsum('ij,ij->i',(a_Ls-zs_1_l)%G.q,s_Rs_ys_m)+np.einsum('ij,ij->i',s_Ls,zs_m_l)%G.q+np.einsum('ij,ij->i',s_Ls,np.multiply(ys_m_l,(a_Rs+zs_1_l)%G.q)%G.q)%G.q)%G.q
     #t2s=np.einsum('ij,ij->i',s_Ls,s_Rs_ys_m)%G.q
     #5.3 - 5.4
@@ -211,14 +214,12 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             t1= (t1 +((mpz(a_Ls[j][i])-z)%G.q)*s_Rs_ys_m % G.q)%G.q
             t1 = (t1+s_Ls[j][i]*zs_m[i]%G.q*twos_n[j]%G.q+(((mpz(a_Rs[j][i])+z)%G.q*ys_m[ind])%G.q)*s_Ls[j][i]%G.q)%G.q
             t2= (t2+ s_Ls[j][i]*s_Rs_ys_m%G.q)%G.q
-
     
     
     #5.5
     T0=pow(h,tau0,G.p)*pow(g,c_bar,G.p)%G.p
     T1=pow(h,tau1,G.p)*pow(g,t1,G.p)%G.p
     T2=pow(h,tau2,G.p)*pow(g,t2,G.p)%G.p
-    
     """for i in range(l):
         T1 = T1* pow(gs[i],mpz(t1s[i]),G.p) % G.p
         T2 = T2* pow(gs[i],mpz(t2s[i]),G.p) % G.p"""
@@ -289,7 +290,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     #t_bar = mpz(0)
     #phis_l=np.zeros(l,dtype=object)
     #phi_j=mpz(1) 
-    delta= ys_m_sum* (z-pow(z,2,G.q)) % G.q#np.sum(ys_m)%G.q* (z-pow(z,2,G.q)) % G.q
+    delta= (ys_m_sum* (z-pow(z,2,G.q)) % G.q)%G.q#np.sum(ys_m)%G.q* (z-pow(z,2,G.q)) % G.q
     delta = (delta - twos_sum*zs_m_sum%G.q*z%G.q)%G.q
     #P_bar = pow(h,G.q-tau_x,G.p) * pow(T1,x,G.p) % G.p * pow(T2,x_2,G.p) % G.p
     #phis_l_1m=np.zeros((l,m),dtype=object)
@@ -300,13 +301,14 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     #P_bar = P_bar * pow(Vs[m-1],zs_m[m-1],G.p) % G.p
     #P_ext=P_bar 
     #11.1 -11.2
-    P=A*pow(S,x,G.p) % G.p   
+    #z_1=pow(z,G.q-2,G.q)
+    P=A*pow(S,x,G.p) % G.p
     y_i=mpz(1)  
-    exp_z = mpz(G.q-z)   
+    exp_z = G.q-z 
     for j in range(n):        
         #t_bar= (t_bar+t_hats[j]*phi_j%G.q) % G.q
         #phis_l[j]=phi_j
-        term= pow(gs[j],delta,G.p)
+        #term= pow(gs[j],delta,G.p)
         #P_bar=  P_bar*term %G.p
         #P_ext= P_ext*term%G.p
         #P_bar=  P_bar*pow(hs[j],phi_j,G.p) % G.p        
@@ -316,8 +318,8 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             #g_ij= pow(g_bolds[j][i],phi_i,G.p)
             h_bolds_prime[j][i]= h_ij
             #g_bolds_prime[j][i]= g_ij
-            P= P* pow(gs[j][i],exp_z,G.p) % G.p
-            P= P* pow(hs[j][i],mpz((z*ys_m[ind]%G.q+zs_m[i]*twos_n[j]%G.q) %G.q),G.p) % G.p 
+            P= P* pow(g_bolds[j][i],exp_z,G.p) % G.p
+            P= P* pow(h_bolds_prime[j][i],mpz((z*ys_m[ind]%G.q+zs_m[i]*twos_n[j]%G.q) %G.q),G.p) % G.p 
             
             #phis_l_1m[j][i]=phi_j*ls[j][i]%G.q 
             y_i=y_i*y_1 % G.q
@@ -332,8 +334,8 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             r1=(a_Rs[j][i]+z)%G.q*ys_m[j*m+i]%G.q+zs_m[i]*twos_n[j]
             t0 = (t0+l1*r1%G.q)%G.q
     print("t0")
-    print(t0==c_bar+delta)
-    print(((t0+t1*x%G.q)%G.q+t2*x_2%G.q)%G.q == t_hat)
+    #print(t0==(c_bar+delta)%G.q, t0, c_bar+delta,c_bar,delta)
+    #print(((t0+t1*x%G.q)%G.q+t2*x_2%G.q)%G.q == t_hat)
 
     lhs = pow(g,t_hat,G.p)*pow(h,tau_x,G.p)%G.p
     rhs=T0*pow(T1,x,G.p)%G.p*pow(T2,pow(x,2,G.q),G.p)%G.p*pow(g,delta,G.p)%G.p
@@ -347,6 +349,8 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     rrr2=pow(h,tau0,G.p)*pow(h,tau1*x%G.q,G.p)%G.p*pow(h,tau2*pow(x,2,G.q)%G.q,G.p)%G.p
     print(lll2==rrr2)
 
+    
+
     #step 16#
     #TODO : Bulletproof u?    
     #phis_l_1m = np.repeat(phis_l,m).reshape((l,m))
@@ -356,14 +360,27 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     #h_bolds=np.array(h_bolds)
     #t_hats=np.array(t_hats)
     #step 13#
-    bp1=bullet_proof(g_bolds.flatten(),h_bolds.flatten(),P,u,ls.flatten(),rs.flatten(),t_hat,G.p,G.q)
-
+    prod=mpz(1)
+    sum=mpz(0)
+    for j in range(n):
+        for i in range(m):
+            prod = prod*pow(g_bolds[j][i],ls[j][i],G.p)%G.p*pow(h_bolds_prime[j][i],rs[j][i],G.p)%G.p
+            sum = (sum + ls[j][i]*rs[j][i]%G.q)%G.q
+    print("bullet1")
+    print(prod==P)
+    print(t_hat==((t0+t1*x%G.q)%G.q+t2*x_2%G.q)%G.q)
+    print(t_hat==sum)
+    bp1=bullet_proof(g_bolds.flatten(),h_bolds_prime.flatten(),P,u,ls.flatten(),rs.flatten(),t_hat,G.p,G.q)
+    (a_bp1,b_bp1,Ls_bp1,Rs_bp1,xs_bp1),x_bp1=bp1
+    print(bullet_verification(g_bolds.flatten(),h_bolds_prime.flatten(),
+                               P,u,a_bp1,b_bp1,t_hat,xs_bp1,x_bp1,Ls_bp1,Rs_bp1,G.p,G.q))
 
     #step 14 - step 15#
     #14.1 -14.3
     rho_prime = G.random_exp()
     ss=np.zeros(l,dtype=object)
     S_prime=pow(h,rho_prime,G.p)
+    
     #16.2
     t1_prime=mpz(0)
     for k in range(l):
@@ -371,7 +388,6 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         ss[k]= s_i
         S_prime = S_prime * pow(gs[k],s_i,G.p) % G.p
         t1_prime = (t1_prime+ss[k])%G.q
-    
     #step 16#
     #16.1 
     tau1_prime = G.random_exp()
@@ -379,7 +395,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     T1_prime = pow(h,tau1_prime,G.p)*pow(g,t1_prime,G.p)%G.p
 
     #step 17 - 18 - 19#
-    x_prime=mpz(hash_elems(T1_prime,S_prime,tau_x,mu,t_hat,T0,T1,T2,A,S,gs,hs, h,u,g_bolds,h_bolds, Vs,q=G.q))
+    x_prime=mpz(2)#mpz(hash_elems(T1_prime,S_prime,tau_x,mu,t_hat,T0,T1,T2,A,S,gs,hs, h,u,g_bolds,h_bolds, Vs,q=G.q))
     #phi = hashg(json.dumps({"tau_x": tau_x, "mu":mu,"T1": T1,"T2":T2,"A": A,"S":S, "gs":gs_list, "hs" :hs_list, "h":h, "u":u, "g_bolds":g_bolds_list, "h_bolds":h_bolds_list, "Vs":Vs_list}),G.q)
     rand=0
     while x_prime==0:
@@ -399,18 +415,30 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     #20.4
     tau_x_prime = (tau0 + tau1_prime*x_prime%G.q)%G.q
     #20.5
-    mu_prime = rho_prime
+    mu_prime = rho_prime*x_prime%G.q
     for i in range(m):
-        mu_prime = (mu_prime+gammas[j]*zs_m[j]%G.q)%G.q
+        mu_prime = (mu_prime+gammas[i]*zs_m[i]%G.q)%G.q
     
     #step 23#
-    P2=pow(h,G.q-mu_prime,G.p)*pow(Vs[m-1],zs_m[m-1]*z%G.q,G.p)%G.p * pow(S_prime,x_prime,G.p)%G.p
-    for i in range(m-1):
-        P2 = P2*pow(Vs[i],zs_m[i+1],G.p)%G.p
+    P2=pow(h,G.q-mu_prime,G.p)* pow(S_prime,x_prime,G.p)%G.p #pow(Vs[m-1],zs_m[m-1]*z%G.q,G.p)%G.p 
+    for i in range(m):
+        P2 = P2*pow(Vs[i],zs_m[i],G.p)%G.p
+    
     P3=P2
     for k in range(l):
         P2 = P2 * hs[k]%G.p
     bp2=bullet_proof(gs,hs,P2,u,ls_prime,rs_prime,t_prime,G.p,G.q)
+    prod2=mpz(1)
+    sum2=mpz(0)
+    for j in range(l): 
+        prod2 = prod2*pow(gs[j],ls_prime[j],G.p)%G.p*pow(hs[j],rs_prime[j],G.p)%G.p
+        sum2 = (sum2 + ls_prime[j]*rs_prime[j]%G.q)%G.q
+    print(P2,prod2)
+    print(t_prime,sum2)
+    (a_bp2,b_bp2,Ls_bp2,Rs_bp2,xs_bp2),x_bp2=bp2
+    if not  bullet_verification(gs,hs,P2,u,a_bp2,b_bp2,t_prime,xs_bp2,x_bp2,Ls_bp2,Rs_bp2,G.p,G.q):
+        print("FFFFAAAAAAAAALLLLLLLLLLLSSSSSSSSSSSEEEE4")
+
 
     #step 14#
     e1=extended_schnorr_proof(gs,P3,ls_prime,G.p,G.q)  
@@ -503,8 +531,8 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T0,T1,T2,x,tau_x,mu,t_hat,
             #g_ij= pow(g_bolds[j][i],phi_i,G.p)
             h_bolds_prime[j][i]= h_ij
             #g_bolds_prime[j][i]= g_ij
-            P= P* pow(gs[j][i],exp_z,G.p) % G.p
-            P= P* pow(hs[j][i],mpz((z*ys_m[ind]%G.q+zs_m[i]*twos_n[j]%G.q) %G.q),G.p) % G.p 
+            P= P* pow(g_bolds[j][i],exp_z,G.p) % G.p
+            P= P* pow(h_bolds_prime[j][i],mpz((z*ys_m[ind]%G.q+zs_m[i]*twos_n[j]%G.q) %G.q),G.p) % G.p 
             
             #phis_l_1m[j][i]=phi_j*ls[j][i]%G.q 
             y_i=y_i*y_1 % G.q
@@ -512,27 +540,29 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T0,T1,T2,x,tau_x,mu,t_hat,
         #phi_j= phi_j *phi % G.q        
     P= P*pow(h,G.q-mu,G.p)%G.p   
     
+    
     #step 13#
     (a_bp1,b_bp1,Ls_bp1,Rs_bp1,xs_bp1),x_bp1=bp_1
-    if not bullet_verification(g_bolds.flatten(),h_bolds.flatten(),
+    if not bullet_verification(g_bolds.flatten(),h_bolds_prime.flatten(),
                                P,u,a_bp1,b_bp1,t_hat,xs_bp1,x_bp1,Ls_bp1,Rs_bp1,G.p,G.q):
+        #print("2222222222 FFAAAALLLLLLSSE")
         return 2
     
     #step 22#
-    lhs2 = pow(g,t_prime,G.P)*pow(h,tau_x_prime,G.p)%G.p
+    lhs2 = pow(g,t_prime,G.p)*pow(h,tau_x_prime,G.p)%G.p
     rhs2 = T0 * pow(T1_prime,x_prime,G.p)%G.p
     if rhs2 != lhs2:
         return 3
     
     #step 23#
-    P2=pow(h,G.q-mu_prime,G.p)*pow(Vs[m],zs_m[m]*z%G.q,G.p)%G.p * pow(S_prime,x_prime,G.p)%G.p
-    for i in range(m-1):
-        P2 = P2*pow(Vs[i],zs_m[i+1],G.p)%G.p
+    P2=pow(h,G.q-mu_prime,G.p)* pow(S_prime,x_prime,G.p)%G.p #*pow(Vs[m-1],zs_m[m-1]*z%G.q,G.p)%G.p 
+    for i in range(m):
+        P2 = P2*pow(Vs[i],zs_m[i],G.p)%G.p
     P3=P2
     for k in range(l):
         P2 = P2 * hs[k]%G.p
     (a_bp2,b_bp2,Ls_bp2,Rs_bp2,xs_bp2),x_bp2=bp_2
-    if not  bullet_verification(gs,hs,P2,u,a_bp2,b_bp2,t_bar,xs_bp2,x_bp2,Ls_bp2,Rs_bp2,G.p,G.q):
+    if not  bullet_verification(gs,hs,P2,u,a_bp2,b_bp2,t_prime,xs_bp2,x_bp2,Ls_bp2,Rs_bp2,G.p,G.q):
         return 4   
 
     #step 24#
@@ -543,7 +573,7 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,y,z,T0,T1,T2,x,tau_x,mu,t_hat,
 
 
 n_false=0
-print("generation time:", t00-t0)
+print("generation time:", t00-time0)
 for i in range(1):
     t1=time.time()
     A,S,y,z,T0,T1,T2,x,tau_x,mu,t_hat,bp1,S_prime,T1_prime,x_prime,mu_prime,tau_x_prime,t_prime,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
