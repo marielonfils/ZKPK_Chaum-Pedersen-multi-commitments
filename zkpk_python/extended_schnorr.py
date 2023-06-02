@@ -1,17 +1,14 @@
 import numpy as np
-import json
-from utils.hash import hashg
 from utils.hash2 import hash_elems
 from gmpy2 import powmod as pow,mpz
 
 def extended_schnorr_proof(g,P,a,p,q):
-    xs=[]
     Ls=[]
     Rs=[]
     def proof(g,P,a,n):
 
         if n==1:
-            return (a,xs,Ls,Rs)   
+            return (a,Ls,Rs)   
 
         #step 1#
         n_prime=int(n/2)
@@ -30,14 +27,11 @@ def extended_schnorr_proof(g,P,a,p,q):
 
         #step 2-3-4 #
         x=mpz(hash_elems(L,R,g,P, q=q))
-        #x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P}),q)
         rand=0
         while x==0:
             x=mpz(hash_elems(L,R,g,P, q=q))
-            #x = hashg(json.dumps({"L": L,"R":R, "g" :g, "P":P, "rand":rand}),q)
             rand+=1
         x_1= pow(x, q-2,q)
-        xs.append(x)
 
         #step 5#
         g_prime=[]
@@ -59,15 +53,16 @@ def extended_schnorr_proof(g,P,a,p,q):
     return proof(g,P,a,n)
 
 
-def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
+def extended_schnorr_verification(g,P,a,Ls,Rs,p,q):
     n_prime=len(g)
     n_prime2=len(Ls)
     if not((n_prime != 0) and (n_prime & (n_prime-1) == 0)):
         raise ValueError("basis are not a power of 2")
     if 2**n_prime2!=n_prime:
         raise ValueError("basis are not a power of 2")
-    if len(xs)!=n_prime2 or len(Rs)!=n_prime2:
+    if len(Rs)!=n_prime2:
         raise ValueError("vectors have not the same length")
+    
     a_prime=a
     g_prime=g
     P_prime=P
@@ -81,7 +76,11 @@ def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
         g_r=g_prime[n_prime:]
 
         g_prime=[]
-        x=xs[i]
+        rand=0
+        x=mpz(hash_elems(Ls[i],Rs[i],g,P, q=q))
+        while x==0:
+            x=mpz(hash_elems(Ls[i],Rs[i],g,P, q=q))
+            rand+=1
         x_1=pow(x,q-2,q)
         for j in range(n_prime):            
             g_prime.append((pow(int(g_r[j]),x,p)*pow(int(g_l[j]),x_1,p))% p)
@@ -95,11 +94,11 @@ def extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q):
     return False
 
 def test():
-    g=[3,4]
+    g=[mpz(3),mpz(4)]
     P=1 #3^2%23=9, 4^3%23=18, 9*18%23=1
-    a=[2,3]
-    p=23
-    q=11
-    a,xs,Ls,Rs=extended_schnorr_proof(g,P,np.array(a),p,q)
-    assert extended_schnorr_verification(g,P,a,xs,Ls,Rs,p,q)
+    a=[mpz(2),mpz(3)]
+    p=mpz(23)
+    q=mpz(11)
+    a,Ls,Rs=extended_schnorr_proof(g,P,np.array(a),p,q)
+    assert extended_schnorr_verification(g,P,a,Ls,Rs,p,q)
 #test()

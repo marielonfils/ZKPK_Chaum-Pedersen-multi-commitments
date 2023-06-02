@@ -1,6 +1,4 @@
 import numpy as np
-import json
-from utils.hash import hashg
 from utils.hash2 import hash_elems
 from gmpy2 import powmod as pow,mpz
 
@@ -9,10 +7,9 @@ from gmpy2 import powmod as pow,mpz
 def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
     Ls=[]
     Rs=[]
-    xs=[]
     def proof(gs,hs,P,u,a_s,bs,n):
         if n== 1:
-            return a_s,bs,Ls,Rs,xs
+            return a_s,bs,Ls,Rs
         
         #step 1#
         n_prime=int(n/2)
@@ -25,8 +22,6 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         h_l=hs[:n_prime]
         h_r=hs[n_prime:]
 
-        """c_L=np.dot(a_l,b_r)%q
-        c_R=np.dot(a_r,b_l)%q"""
         c_L=mpz(0)
         c_R=mpz(0)
         for i in range(n_prime):
@@ -43,16 +38,12 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
         Rs.append(R)
 
         #step 2-3-4 #
-        x=mpz(hash_elems(L,R,gs,hs,a_s,bs,c,u,P,p,q, q=q))
-        #x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
-        
+        x=mpz(hash_elems(L,R,gs,hs,c,u,P,p, q=q))  
         rand=0
         while x==0:
-            x=mpz(hash_elems(L,R,gs,hs,a_s,bs,c,u,P,p,q,rand, q=q))
-            #x=hashg(json.dumps({"L": L,"R":R,"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q, "rand":rand}),q)
+            x=mpz(hash_elems(L,R,gs,hs,c,u,P,p,rand, q=q))
             rand+=1
         x_1= pow(x, q-2,q)
-        xs.append(x)
 
         #step 5#
         g_prime=[]
@@ -75,27 +66,30 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
     if len(hs)!=n or len(a_s)!=n or len(bs)!=n:
         raise ValueError("vectors have not the same length")
     
-    x=mpz(hash_elems(gs,hs,a_s,bs,c,u,P,p,q, q=q))
-    #x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q}),q)
+    x=mpz(hash_elems(gs,hs,c,u,P,p, q=q))
     rand=0
     while x==0:
-        x=mpz(hash_elems(gs,hs,a_s,bs,c,u,P,p,q,rand, q=q))
-        #x=hashg(json.dumps({"g" :gs,"h":hs,"a":a_s.astype(int).tolist(),"b":bs.astype(int).tolist(),"c":c,"u":u,"P":P,"p":p,"q":q,"rand":rand}),q)
+        x=mpz(hash_elems(gs,hs,c,u,P,p,rand, q=q))
         rand+=1
     u_xc=pow(u,x*c%q,p)
     u_x=pow(u,x,p)
-    return proof(gs,hs,P*u_xc%p,u_x,a_s,bs,n),x
+    return proof(gs,hs,P*u_xc%p,u_x,a_s,bs,n)
 
 
-def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
+def bullet_verification(gs,hs,P,u,a,b,c,Ls,Rs,p,q):
     n_prime=len(gs)
     n_prime2=len(Ls)
     if not((n_prime != 0) and (n_prime & (n_prime-1) == 0)):
         raise ValueError("basis are not a power of 2")
     if 2**n_prime2!=n_prime:
         raise ValueError("basis are not a power of 2")
-    if len(hs)!=n_prime or len(Rs)!=n_prime2 or len(xs)!=n_prime2:
+    if len(hs)!=n_prime or len(Rs)!=n_prime2:
         raise ValueError("vectors have not the same length")
+    x=mpz(hash_elems(gs,hs,c,u,P,p, q=q))
+    rand=0
+    while x==0:
+        x=mpz(hash_elems(gs,hs,c,u,P,p,rand, q=q))
+        rand+=1
     g_prime=gs
     h_prime=hs
     P_prime=P*pow(u,x*c%q,p)%p
@@ -111,10 +105,14 @@ def bullet_verification(gs,hs,P,u,a,b,c,xs,x,Ls,Rs,p,q):
         h_l=h_prime[:n_prime]
         h_r=h_prime[n_prime:]
 
+        x=mpz(hash_elems(Ls[i],Rs[i],g_prime,h_prime,c,u_prime,P_prime,p, q=q))
+        rand=0
+        while x==0:
+            x=mpz(hash_elems(Ls[i],Rs[i],g_prime,h_prime,c,u_prime,P_prime,p,rand, q=q))
+            rand+=1
+        x_1=pow(x,q-2,q)
         g_prime=[]
         h_prime=[]
-        x=xs[i]
-        x_1=pow(x,q-2,q)
         for j in range(n_prime):            
             g_prime.append((pow(g_r[j],x,p)*pow(g_l[j],x_1,p))% p)
             h_prime.append((pow(h_r[j],x_1,p)*pow(h_l[j],x,p))% p)
@@ -141,6 +139,6 @@ def test():
     p=mpz(23)
     q=mpz(11)
     #x=2
-    (a,b,Ls,Rs,xs),x=bullet_proof(g,h,P,u,np.array(a),np.array(b),c,p,q)
-    assert bullet_verification(g,h,P,u,a,b,c,xs,x,Ls,Rs,p,q)
+    a,b,Ls,Rs=bullet_proof(g,h,P,u,np.array(a),np.array(b),c,p,q)
+    assert bullet_verification(g,h,P,u,a,b,c,Ls,Rs,p,q)
 test()

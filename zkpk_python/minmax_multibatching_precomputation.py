@@ -1,5 +1,5 @@
 import numpy as np
-from utils.group import random_exp,compute_size2
+from utils.group import random_exp,compute_size2, PowRadix
 from utils.hash2 import hash_elems
 import json
 from bulletproof import bullet_proof, bullet_verification
@@ -29,8 +29,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             a_i=shifted&1
             a_Ls[j][i]=a_i
             a_Rs[j][i]=a_i-1
-            shifted = shifted>>1
-   
+            shifted = shifted>>1    
     #1.3
     alpha=random_exp()
     rho=random_exp()
@@ -41,8 +40,8 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             s_Ls[j][i]=random_exp()
             s_Rs[j][i]=random_exp()
     #1.4 - 1.5
-    A=pow(h,alpha,p)
-    S=pow(h,rho,p)
+    A=hpow(alpha)
+    S=hpow(rho)
     twos_n=np.zeros(n,dtype=object)
     twos_i=mpz(1)
     twos_sum=mpz(0)           
@@ -51,10 +50,10 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         twos_sum = (twos_sum+twos_i)%q
         twos_i = twos_i*mpz(2)%q
         for j in range(m):
-            A=A*pow(g_bolds[i][j],mpz(a_Ls[i][j]),p) % p
-            A=A*pow(h_bolds[i][j],mpz(a_Rs[i][j]),p) % p
-            S=S*pow(g_bolds[i][j],s_Ls[i][j],p) % p
-            S=S*pow(h_bolds[i][j],s_Rs[i][j],p) % p            
+            A= A*gsboldspow[i][j](mpz(a_Ls[i][j]))%p 
+            A= A*hsboldspow[i][j](mpz(a_Rs[i][j]))%p 
+            S= S*gsboldspow[i][j](s_Ls[i][j])%p 
+            S= S*hsboldspow[i][j](s_Rs[i][j])%p             
 
     #step 2 - 3 - 4#
     y=mpz(hash_elems(A,S,gs,hs, h,u,g_bolds,h_bolds, Vs,q=q))
@@ -114,9 +113,9 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             
 
             ind=j*m+i
-            h_ij=pow(h_bolds[j][i],y_i,p)
+            h_ij= hsboldspow[j][i](y_i) 
             h_bolds_prime[j][i]= h_ij
-            P= P* pow(g_bolds[j][i],exp_z,p) % p
+            P= P*gsboldspow[j][i](exp_z)%p 
             P= P* pow(h_bolds_prime[j][i],mpz((z*ys_m_i%q+zs_m[i]*twos_n[j]%q) %q),p) % p 
             y_i=y_i*y_1 % q  
             l1=(a_Ls[j][i]-z)%q
@@ -124,9 +123,9 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
             t0 = (t0+l1*r1%q)%q 
             ys_m_i= ys_m_i *y %q
     #5.5
-    T0=pow(h,tau0,p)*pow(g,c_bar,p)%p
-    T1=pow(h,tau1,p)*pow(g,t1,p)%p
-    T2=pow(h,tau2,p)*pow(g,t2,p)%p
+    T0=hpow(tau0)*gpow(c_bar)%p
+    T1=hpow(tau1)*gpow(t1)%p
+    T2=hpow(tau2)*gpow(t2)%p
 
     #step 6 - 7 -8#
     x=mpz(hash_elems(T0,T1,T2,A,S,gs,hs, h,u,g_bolds,h_bolds, Vs,q=q))
@@ -154,7 +153,9 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     tau_x= ((tau2*x_2 %q + tau1*x %q)%q + tau0)%q
     #9.5
     mu=(alpha+rho*x % q)%q
-    P= P*pow(h,q-mu,p)%p*pow(S,x,p) % p    
+    P= P*hpow(q-mu)%p*pow(S,x,p)%p
+
+   
 
     #step 13#
     bp1=bullet_proof(g_bolds.flatten(),h_bolds_prime.flatten(),P,u,ls.flatten(),rs.flatten(),t_hat,p,q)
@@ -163,7 +164,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     #14.1 -14.3
     rho_prime = random_exp()
     ss=np.zeros(l,dtype=object)
-    S_prime=pow(h,rho_prime,p)
+    S_prime=hpow(rho_prime)#pow(h,rho_prime,p)
     
     #step 16#
     #16.1 
@@ -173,10 +174,10 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     for k in range(l):
         s_i = random_exp()
         ss[k]= s_i
-        S_prime = S_prime * pow(gs[k],s_i,p) % p
+        S_prime = S_prime * gspow[k](s_i)%p
         t1_prime = (t1_prime+ss[k])%q    
     #16.3
-    T1_prime = pow(h,tau1_prime,p)*pow(g,t1_prime,p)%p
+    T1_prime = hpow(tau1_prime)*gpow(t1_prime)%p
 
     #step 17 - 18 - 19#
     x_prime=mpz(hash_elems(T1_prime,S_prime,tau_x,mu,t_hat,T0,T1,T2,A,S,gs,hs, h,u,g_bolds,h_bolds, Vs,q=q))
@@ -202,7 +203,7 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
         mu_prime = (mu_prime+gammas[i]*zs_m[i]%q)%q
     
     #step 23#
-    P2=pow(h,q-mu_prime,p)* pow(S_prime,x_prime,p)%p 
+    P2=hpow(q-mu_prime)*pow(S_prime,x_prime,p)%p
     for i in range(m):
         P2 = P2*pow(Vs[i],zs_m[i],p)%p
     
@@ -269,8 +270,8 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp_1,S
     #step 12
     delta= ys_m_sum* (z-pow(z,2,q)) % q
     delta = (delta - twos_sum*zs_m_sum%q*z%q)%q
-    lhs = pow(g,t_hat,p)*pow(h,tau_x,p)%p
-    rhs=T0*pow(T1,x,p)%p*pow(T2,pow(x,2,q),p)%p*pow(g,delta,p)%p
+    lhs = gpow(t_hat)*hpow(tau_x)%p 
+    rhs= T0*pow(T1,x,p)%p*pow(T2,pow(x,2,q),p)%p*gpow(delta)%p 
     if lhs != rhs:
         return 1
     
@@ -285,13 +286,13 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp_1,S
     for j in range(n):                
         for i in range(m):
             ind=j*m+i
-            h_ij=pow(h_bolds[j][i],y_i,p)
+            h_ij=hsboldspow[j][i](y_i) 
             h_bolds_prime[j][i]= h_ij
-            P= P* pow(g_bolds[j][i],exp_z,p) % p
+            P= P*gsboldspow[j][i](exp_z)%p 
             P= P* pow(h_bolds_prime[j][i],mpz((z*ys_m[ind]%q+zs_m[i]*twos_n[j]%q) %q),p) % p             
             y_i=y_i*y_1 % q
-    P= P*pow(h,q-mu,p)%p      
-    
+    P= P*hpow(q-mu)%p 
+
     #step 13#
     a_bp1,b_bp1,Ls_bp1,Rs_bp1=bp_1
     if not bullet_verification(g_bolds.flatten(),h_bolds_prime.flatten(),
@@ -299,13 +300,13 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp_1,S
         return 2
     
     #step 22#
-    lhs2 = pow(g,t_prime,p)*pow(h,tau_x_prime,p)%p
+    lhs2 = gpow(t_prime)*hpow(tau_x_prime)%p 
     rhs2 = T0 * pow(T1_prime,x_prime,p)%p
     if rhs2 != lhs2:
         return 3
     
     #step 23#
-    P2=pow(h,q-mu_prime,p)* pow(S_prime,x_prime,p)%p
+    P2= hpow(q-mu_prime)*pow(S_prime,x_prime,p)%p 
     for i in range(m):
         P2 = P2*pow(Vs[i],zs_m[i],p)%p
     P3=P2
@@ -323,7 +324,8 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp_1,S
 
 
 n_false=0
-lm=[2]#[1,2,4,8,16,32,64,128]
+lm=[1]#,2,4,8,16,32,64,128]
+ks=[10]#,2,4,6,8,10]
 f1="1_1_p.stats"
 f2="1_1_v.stats"
 generation_t=[]
@@ -332,60 +334,78 @@ verifier_t=[]
 t=[]
 size=[]
 for l in lm:
+    for k in ks:
     
-    # groups size
-    #l=128
-    n=2
-    m=l    
-    # generators
-    time0=time.time()
-    gs,hs,g_bolds,h_bolds = generate_constants(l,m,n)
-    # votes and commitment on votes
-    Vs=np.zeros(m,dtype=object)
-    vs=np.random.randint(2,size=(l,m))
-    limit=np.zeros(m)
-    for i in range(m):
-        for j in range(l):
-            if limit[i]>=2**(n-1):
-                vs[j][i]=0
-            else:
-                if vs[j][i]==1:
-                    limit[i]+=1
-
-    gammas=np.zeros(m,dtype=object)
-    for i in range(m):
-        gammas_i=random_exp()
-        gammas[i]=gammas_i
-        product=pow(h,gammas_i,p)
-        for j in range(l):
-            product= product *pow(gs[j],mpz(vs[j][i]),p)%p
-        Vs[i]=product
-    t00 = time.time()
-    generation_t.append(t00-time0)
-    for i in range(1):
-        t1=time.time()
-        #profiler = cProfile.Profile()
-        #profiler.enable()
-        A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
-        #profiler.disable()
-        #profiler.dump_stats(f1)
-        t2=time.time()
-        #print("prover time:", t2-t1)
-        prover_t.append(t2-t1)
-        size.append(compute_size2(A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1,l,m,n))
-        t3=time.time()
-        #profiler2 = cProfile.Profile()
-        #profiler2.enable()
-        t=verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1)
-        #profiler2.disable()
-        #profiler2.dump_stats(f2)
-        t4=time.time()
-        #print("verifier time:", t4-t3)
-        verifier_t.append(t4-t3)
-        if t!=0:
-            n_false+=1
-            print(t)
-    print(l,m,n,n_false)
+        # groups size
+        #l=128
+        n=2
+        m=l    
+        # generators
+        time0=time.time()
+        gs,hs,g_bolds,h_bolds = generate_constants(l,m,n)
+        #precomputation
+        gs_radix = [PowRadix(gs[i], k) for i in range(l)]
+        gspow = [gs_radix[i].pow for i in range(l)]
+        gsbolds_radix = [[PowRadix(g_bolds[i][j], k) for j in range(m)]for i in range(n)]
+        gsboldspow = [[gsbolds_radix[i][j].pow for j in range(m)] for i in range(n)]
+        hsbolds_radix = [[PowRadix(h_bolds[i][j], k) for j in range(m)]for i in range(n)]
+        hsboldspow = [[hsbolds_radix[i][j].pow for j in range(m)] for i in range(n)]
+        g_radix = PowRadix(h, k) 
+        gpow = g_radix.pow
+        h_radix = PowRadix(g, k) 
+        hpow = h_radix.pow
+        time01=time.time()
+        # votes and commitment on votes
+        Vs=np.zeros(m,dtype=object)
+        vs=np.random.randint(2,size=(l,m))
+        limit=np.zeros(m)
+        for i in range(m):
+            for j in range(l):
+                if limit[i]>=2**(n-1):
+                    vs[j][i]=0
+                else:
+                    if vs[j][i]==1:
+                        limit[i]+=1
+        time02=time.time()
+        gammas=np.zeros(m,dtype=object)
+        for i in range(m):
+            gammas_i=random_exp()
+            gammas[i]=gammas_i
+            product=hpow(gammas_i)
+            for j in range(l):
+                product= product*gspow[j](mpz(vs[j][i]))%p 
+            Vs[i]=product
+        t00 = time.time()
+        generation_t.append(t00-time02+time01-time0)
+        v_t=[]
+        p_t=[]
+        print("#generated")
+        for i in range(3):
+            t1=time.time()
+            #profiler = cProfile.Profile()
+            #profiler.enable()
+            A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
+            #profiler.disable()
+            #profiler.dump_stats(f1)
+            t2=time.time()
+            #print("prover time:", t2-t1)
+            p_t.append(t2-t1)
+            size.append(compute_size2(A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1,l,m,n))
+            t3=time.time()
+            #profiler2 = cProfile.Profile()
+            #profiler2.enable()
+            t=verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1)
+            #profiler2.disable()
+            #profiler2.dump_stats(f2)
+            t4=time.time()
+            #print("verifier time:", t4-t3)
+            v_t.append(t4-t3)
+            if t!=0:
+                n_false+=1
+                print("error",t)
+        print(k,l,m,n,n_false,p_t,v_t)
+        prover_t.append(np.mean(p_t))
+        verifier_t.append(np.mean(v_t))
 print("generation_t=",generation_t)
 print("prover_t=",prover_t)
 print("verifier_t=",verifier_t)
