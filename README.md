@@ -15,10 +15,10 @@ The implementation requires
 ## Structure
 The repository is composed as follows :
 - _utils_ folder:
- - group.py : provides random group exponents, exponentiation with precomputation and proof size computation
- - constants.py : provides group parameters and loading of generators
- - generators.gmz : contains 33024 generators
- - hash2.py: provides a hash function
+    - group.py : provides random group exponents, exponentiation with precomputation and proof size computation
+    - constants.py : provides group parameters and loading of generators
+    - generators.gmz : contains 33024 generators
+    - hash2.py: provides a hash function
 - logarithmic.py : provides an implementation of the **Logarithmic 0-1** proof
 - logarithmic_precomputation.py : provides an implementation of the **Logarithmic 0-1** proof using precomputed tables for group exponentiations
 - minmax_multibatching.py: provides an implementation of the **K-selection** proof
