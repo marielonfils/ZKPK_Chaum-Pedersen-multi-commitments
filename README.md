@@ -13,12 +13,14 @@ The implementation requires
 - gmpy2
 
 ## Structure
-The repository is composed as follows :
+The repository is composed as follows inside the folder _zkpk_python_:
 - _utils_ folder :
     - _group.py_ : provides random group exponents, exponentiation with precomputation and proof size computation
     - _constants.py_ : provides group parameters and loading of generators
     - _constants.npz_ : contains 33024 generators
     - _hash2.py_ : provides a hash function
+- _bulletproof.py_ : provides an implementation of the **Bulletproofs inner-product** argument
+- _extended_schnorr.py_ : provides an implementation of the **Extended Schnorr** argument
 - _logarithmic.py_ : provides an implementation of the **Logarithmic 0-1** proof
 - _logarithmic_precomputation.py_ : provides an implementation of the **Logarithmic 0-1** proof using precomputed tables for group exponentiations
 - _minmax_multibatching.py_ : provides an implementation of the **K-selection** proof
