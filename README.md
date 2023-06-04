@@ -23,8 +23,8 @@ The repository is composed as follows inside the folder _zkpk_python_:
 - _extended_schnorr.py_ : provides an implementation of the **Extended Schnorr** argument
 - _logarithmic.py_ : provides an implementation of the **Logarithmic 0-1** proof
 - _logarithmic_precomputation.py_ : provides an implementation of the **Logarithmic 0-1** proof using precomputed tables for group exponentiations
-- _minmax_multibatching.py_ : provides an implementation of the **K-selection** proof
-- _minmax_multibatching_precomputation.py_ : provides an implementation of the **K-selection** proof using precomputed tables for group exponentiations
+- _k_selection.py_ : provides an implementation of the **K-selection** proof
+- _k_selection_precomputation.py_ : provides an implementation of the **K-selection** proof using precomputed tables for group exponentiations
 - _partial_opening.py_ : provides an implementation of the **Partial Opening** protocol
 - _partial_opening_precomputation.py_ : provides an implementation of the **Partial Opening** protocol using precomputed tables for group exponentiations
 
