@@ -1,3 +1,4 @@
+# Hash function adapted from Microsoft ElectionGuard's python implementation
 """
 MIT License
 

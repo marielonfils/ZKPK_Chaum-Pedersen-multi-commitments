@@ -1,20 +1,64 @@
 import numpy as np
 from utils.group import random_exp,compute_size2
 from utils.hash2 import hash_elems
-import json
 from bulletproof import bullet_proof, bullet_verification
 from extended_schnorr import extended_schnorr_proof, extended_schnorr_verification
 from utils.constants import generate_constants,g,h,u,p,q 
 from gmpy2 import powmod as pow,mpz
-import time
-#import cProfile
-#import pstats
-start_time = time.time()
+
+### Implementation of the K-selection proof ###
+
+# groups size
+l=8 #128 max
+m=8 #128 max
+n=2 
+    
+# generators
+gs,hs,g_bolds,h_bolds = generate_constants(l,m,n)
+
+# votes and commitment on votes
+Vs=np.zeros(m,dtype=object)
+vs=np.random.randint(2,size=(l,m))
+limit=np.zeros(m)
+for i in range(m):
+    for j in range(l):
+        if limit[i]>=2**(n-1): # to be sure to have valid votes
+            vs[j][i]=0
+        else:
+            if vs[j][i]==1:
+                limit[i]+=1
+
+gammas=np.zeros(m,dtype=object)
+for i in range(m):
+    gammas_i=random_exp()
+    gammas[i]=gammas_i
+    product=pow(h,gammas_i,p)
+    for j in range(l):
+        product= product *pow(gs[j],mpz(vs[j][i]),p)%p
+    Vs[i]=product
 
 
 #Prover's function
-#@profile
 def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
+    """
+    Provides a zero knowledge proof that the columns of vs contain at most  2^n-1 1's
+    inputs
+        - gs : array of mpz of size l containing generators 
+        - hs : array of mpz of size l containing generators 
+        - h : mpz generator 
+        - u : mpz generator
+        - g_bolds : array of mpz of size nxm containing generators 
+        - h_bolds : array of mpz of size nxm containing generators	
+        - Vs : array of mpz of size m containing the commitments on the l possible selections
+        - vs : array of mpz of size lxm containing the votes as 0/1
+        - gammas : array of mpz of size m containing the randomness to create the commitments Vs
+        Note that l, n and m should be powers of 2.
+    outputs 
+        - A, S, T0, T1, T2, S_prime, T1_prime, t_prime elements of G 
+        - tau_x, mu, t_hat, mu_prime, tau_x_prime : elements of Z_p  
+        - bp1, bp1,  e1 : elements generated respectively by the first and the second Bulletproofs inner-product arguments and the Extended Schnorr argument
+    """
+
     #step 1#
     #1.1 - 1.2
     a_Ls=np.zeros((n,m),dtype=object)
@@ -218,8 +262,29 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
     
 
 #Verifier's function
-#@profile
 def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp_1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp_2,e1):
+    """
+    Verifies that the columns of vs contain at most  2^n-1 1's
+    inputs gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp_1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp_2,e1
+        - gs : array of mpz of size l containing generators 
+        - hs : array of mpz of size l containing generators 
+        - h : mpz generator 
+        - u : mpz generator
+        - g_bolds : array of mpz of size nxm containing generators 
+        - h_bolds : array of mpz of size nxm containing generators	
+        - Vs : array of mpz of size m containing the commitments on the l possible selections
+        - A, S, T0, T1, T2, S_prime, T1_prime, t_prime elements of G 
+        - tau_x, mu, t_hat, mu_prime, tau_x_prime : elements of Z_p  
+        - bp1, bp1,  e1 : elements generated respectively by the first and the second Bulletproofs inner-product arguments and the Extended Schnorr argument
+        Note that l, n and m should be powers of 2.    
+    outputs
+        - 0 : success; proof verified
+        - 1 : error in the first verification equation
+        - 2 : error in the first Bulletproofs inner-product argument
+        - 3 : error in the second verification equation
+        - 4 : error in the second Bulletproofs inner-product argument
+        - 5 : error in the Extended Schnorr argument
+    """
 
     y=mpz(hash_elems(A,S,gs,hs, h,u,g_bolds,h_bolds, Vs,q=q))
     rand=0
@@ -322,76 +387,8 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp_1,S
     return 0
 
 
-n_false=0
-lm=[2]#[1,2,4,8,16,32,64,128]
-f1="1_1_p.stats"
-f2="1_1_v.stats"
-generation_t=[]
-prover_t=[]
-verifier_t=[]
-t=[]
-size=[]
-for l in lm:
-    
-    # groups size
-    #l=128
-    n=2
-    m=l    
-    # generators
-    time0=time.time()
-    gs,hs,g_bolds,h_bolds = generate_constants(l,m,n)
-    # votes and commitment on votes
-    Vs=np.zeros(m,dtype=object)
-    vs=np.random.randint(2,size=(l,m))
-    limit=np.zeros(m)
-    for i in range(m):
-        for j in range(l):
-            if limit[i]>=2**(n-1):
-                vs[j][i]=0
-            else:
-                if vs[j][i]==1:
-                    limit[i]+=1
 
-    gammas=np.zeros(m,dtype=object)
-    for i in range(m):
-        gammas_i=random_exp()
-        gammas[i]=gammas_i
-        product=pow(h,gammas_i,p)
-        for j in range(l):
-            product= product *pow(gs[j],mpz(vs[j][i]),p)%p
-        Vs[i]=product
-    t00 = time.time()
-    generation_t.append(t00-time0)
-    for i in range(1):
-        t1=time.time()
-        #profiler = cProfile.Profile()
-        #profiler.enable()
-        A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
-        #profiler.disable()
-        #profiler.dump_stats(f1)
-        t2=time.time()
-        #print("prover time:", t2-t1)
-        prover_t.append(t2-t1)
-        size.append(compute_size2(A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1,l,m,n))
-        t3=time.time()
-        #profiler2 = cProfile.Profile()
-        #profiler2.enable()
-        t=verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1)
-        #profiler2.disable()
-        #profiler2.dump_stats(f2)
-        t4=time.time()
-        #print("verifier time:", t4-t3)
-        verifier_t.append(t4-t3)
-        if t!=0:
-            n_false+=1
-            print(t)
-    print(l,m,n,n_false)
-print("generation_t=",generation_t)
-print("prover_t=",prover_t)
-print("verifier_t=",verifier_t)
-print("size=",size)
-print("--- %s seconds ---" % (time.time() - start_time))
-#stats=pstats.Stats(f1)
-#stats.print_callers("powmod")
-#stats=pstats.Stats(f2)
-#stats.print_callers("powmod")
+
+A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
+t=verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T0,T1,T2,tau_x,mu,t_hat,bp1,S_prime,T1_prime,mu_prime,tau_x_prime,t_prime,bp2,e1)
+print(t)

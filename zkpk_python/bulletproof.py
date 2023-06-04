@@ -2,9 +2,29 @@ import numpy as np
 from utils.hash2 import hash_elems
 from gmpy2 import powmod as pow,mpz
 
+### Implementation of the Bulletproofs inner-product argument ###
 
-
+#Prover's function
 def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
+    """
+    Provides a zero knowledge proof of the relation : gs[0]^a_s[0]...gs[n-1]^a_s[n-1]hs[0]^bs[0]...hs[n-1]^bs[n-1] =P and c=<a_s,bs>
+    inputs
+
+        - gs : array of mpz of size n containing generator of a group modulo p
+        - hs : array of mpz of size n containing generator of a group modulo p
+        - P : mpz, element of a group modulo p
+        - u : mpz, generator of a group modulo p
+        - a_s: array of mpz of size n containing elements of a group modulo q
+        - bs : array of mpz of size n containing elements of a group modulo q
+        - c : mpz, element of a group modulo q
+        - p : mpz, prime value, all elements are modulo p
+        - q : mpz, exponents are modulo q
+        Note that n should be a power of 2.
+    outputs:
+        - True : success, proof verified
+        - False: the proof is erroneous
+        - ValueError : if len(Rs) != len(Ls) or len(gs) != len(hs) or if n is not a power of 2
+    """
     Ls=[]
     Rs=[]
     def proof(gs,hs,P,u,a_s,bs,n):
@@ -75,8 +95,30 @@ def bullet_proof(gs,hs,P,u,a_s,bs,c,p,q):
     u_x=pow(u,x,p)
     return proof(gs,hs,P*u_xc%p,u_x,a_s,bs,n)
 
-
+#Verifier's function
 def bullet_verification(gs,hs,P,u,a,b,c,Ls,Rs,p,q):
+    """
+    Verifies if gs,hs,a_s,bs and c verifies the relation : gs[0]^d_s[0]...gs[n-1]^d_s[n-1]hs[0]^es[0]...hs[n-1]^es[n-1] =P and c=<a_s,bs>
+    inputsgs,hs,P,u,a,b,c,Ls,Rs,p,q
+        - gs : array of mpz of size n containing generators of a group modulo p
+        - hs : array of mpz of size n containing generators of a group modulo p
+        - P : mpz, element of a group modulo p
+        - u : mpz, generator of a group modulo p
+        - a : mpz, element of a group modulo q
+        - b : mpz, element of a group modulo q
+        - c : mpz, element of a group modulo q
+        - Ls: array of mpz of size log_2(n) containing elements of a group modulo p
+        - Rs: array of mpz of size log_2(n) containing elements of a group modulo p
+        - p : mpz, prime value, all elements are modulo p
+        - q : mpz, exponents are modulo q
+        Note that n should be a power of 2.
+    outputs:
+        - a_s : array of mpz of size log_2(n) containing elements of a group modulo q
+        - bs  : array of mpz of size log_2(n) containing elements of a group modulo q
+        - Ls  : array of mpz of size log_2(n) containing elements of a group modulo p
+        - Rs  : array of mpz of size log_2(n) containing elements of a group modulo p
+    """
+
     n_prime=len(gs)
     n_prime2=len(Ls)
     if not((n_prime != 0) and (n_prime & (n_prime-1) == 0)):
@@ -141,4 +183,4 @@ def test():
     #x=2
     a,b,Ls,Rs=bullet_proof(g,h,P,u,np.array(a),np.array(b),c,p,q)
     assert bullet_verification(g,h,P,u,a,b,c,Ls,Rs,p,q)
-test()
+#test()

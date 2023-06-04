@@ -1,15 +1,45 @@
 import numpy as np
-import sys
 from utils.group import random_exp, compute_size, PowRadix
 from utils.hash2 import hash_elems
 from bulletproof import bullet_proof, bullet_verification
 from extended_schnorr import extended_schnorr_proof, extended_schnorr_verification
 from utils.constants import generate_constants,h,u,p,q 
 from gmpy2 import powmod as pow,mpz
-import time
-#import cProfile
-#import pstats
-start_time = time.time()
+
+### Implementation of the Logarithmic 0-1 proof ###
+
+# groups size
+l= 8 #128 max
+m= 8 #128 max
+
+#precomputation parmeter
+k= 2
+
+# generators
+gs,hs,g_bolds,h_bolds = generate_constants(l,m)
+#precomputation
+gs_radix = [PowRadix(gs[i], k) for i in range(l)]
+gspow = [gs_radix[i].pow for i in range(l)]
+hs_radix = [PowRadix(hs[i], k) for i in range(l)]
+hspow = [hs_radix[i].pow for i in range(l)]
+gsbolds_radix = [[PowRadix(g_bolds[i][j], k) for j in range(m)]for i in range(l)]
+gsboldspow = [[gsbolds_radix[i][j].pow for j in range(m)] for i in range(l)]
+hsbolds_radix = [[PowRadix(h_bolds[i][j], k) for j in range(m)]for i in range(l)]
+hsboldspow = [[hsbolds_radix[i][j].pow for j in range(m)] for i in range(l)]
+h_radix = PowRadix(h, k) 
+hpow = h_radix.pow
+
+# votes and commitment on votes
+Vs=np.zeros(m,dtype=object)
+vs=np.random.randint(2,size=(l,m))
+gammas=np.zeros(m,dtype=object)
+for i in range(m):
+    gammas_i=random_exp()
+    gammas[i]=gammas_i
+    product=hpow(gammas_i)
+    for j in range(l):
+        product= product*gspow[j](mpz(vs[j][i]))%p
+    Vs[i]=product
 
 
 def delta(y,z):
@@ -27,19 +57,37 @@ def delta(y,z):
 
 #Prover's function
 def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
+    """
+    Provides a logarithmic size proof that elements in vs are 0/1
+    inputs
+        - gs : array of mpz of size l containing generators 
+        - hs : array of mpz of size l containing generators 
+        - h : mpz generator 
+        - u : mpz generator
+        - g_bolds : array of mpz of size lxm containing generators 
+        - h_bolds : array of mpz of size lxm containing generators	
+        - Vs : array of mpz of size m containing the commitments on the l possible selections
+        - vs : array of mpz of size lxm containing the votes as 0/1
+        - gammas : array of mpz of size m containing the randomness to create the commitments Vs
+        Note that l and m should be powers of 2.
+    outputs 
+        - A, S, T0, T1, T2 : elements of G 
+        - tau_x, mu, t_bar :  elements of Z_p  
+        - bp1, bp1,  e1 : elements generated respectively by the first and the second Bulletproofs inner-product arguments and the Extended Schnorr argument
+    """
+
     #step 1#
     #1.1
     a_Ls=vs.copy()
-    #verify if modulo 2 TODO
-    #1.2
-    a_Rs=(a_Ls-np.ones((l,m)))
-    #1.3
+    #1.2 - 1.3
     alpha=random_exp()
     rho=random_exp()
+    a_Rs=np.zeros((l,m),dtype=object)
     s_Ls=np.zeros((l,m),dtype=object)
     s_Rs=np.zeros((l,m),dtype=object)
     for j in range(l):
         for i in range(m):
+            a_Rs[j][i]=a_Ls[j][i]+q-1
             s_Ls[j][i]=random_exp()
             s_Rs[j][i]=random_exp()
     #1.4 - 1.5
@@ -195,6 +243,26 @@ def generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas):
 
 #Verifier's function
 def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T1,T2,tau_x,mu,phi,t_bar,bp_1,bp_2,e1):
+    """
+    Verifies in a zero knowledge fashion that the elements of vs are 0/1
+    inputs
+        - gs : array of mpz of size l containing generators 
+        - hs : array of mpz of size l containing generators 
+        - h : mpz generator 
+        - u : mpz generator
+        - g_bolds : array of mpz of size lxm containing generators 
+        - h_bolds : array of mpz of size lxm containing generators	
+        - Vs : array of mpz of size m containing the commitments on the l possible selections
+        - A,S,T1,T2 : mpz, elements of G
+        - tau_x,mu,phi,t_bar : mpz, elements of Z_p
+        - bp_1,bp_2,e1 : elements generated respectively by the first and the second Bulletproofs inner-product arguments and the Extended Schnorr argument
+        Note that l and m should be powers of 2.
+    outputs
+        - 0 : success; proof verified
+        - 1 : error in the first Bulletproofs inner-product argument
+        - 2 : error in the second Bulletproofs inner-product argument
+        - 3 : error in the Extended Schnorr argument
+    """
 
     y=mpz(hash_elems(A,S,gs,hs, h,u,g_bolds,h_bolds, Vs,q=q))
     rand=0
@@ -275,99 +343,6 @@ def verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T1,T2,tau_x,mu,phi,t_bar,bp_1,
     return 0
 
 
-
-
-n_false=0
-lm=[1]#1,2,4,8,16,32,64,128]
-ks=[1]#2,4,6,8,10,1]#[1,2,4,6,8,10]
-k=sys.argv[1]
-l=sys.argv[2]
-lm.append(int(l))
-ks.append(int(k))
-f1="1_1_p.stats"
-f2="1_1_v.stats"
-generation_t=[]
-prover_t=[]
-verifier_t=[]
-t=[]
-size=[]
-
-for k in ks:
-    generation_t=[]
-    prover_t=[]
-    verifier_t=[]
-    t=[]
-    size=[]
-    for l in lm:
-    
-    
-        # groups size
-        m=l#128
-
-        # generators
-        t0=time.time()
-        gs,hs,g_bolds,h_bolds = generate_constants(l,m)
-        #precomputation
-        gs_radix = [PowRadix(gs[i], k) for i in range(l)]
-        gspow = [gs_radix[i].pow for i in range(l)]
-        hs_radix = [PowRadix(hs[i], k) for i in range(l)]
-        hspow = [hs_radix[i].pow for i in range(l)]
-        gsbolds_radix = [[PowRadix(g_bolds[i][j], k) for j in range(m)]for i in range(l)]
-        gsboldspow = [[gsbolds_radix[i][j].pow for j in range(m)] for i in range(l)]
-        hsbolds_radix = [[PowRadix(h_bolds[i][j], k) for j in range(m)]for i in range(l)]
-        hsboldspow = [[hsbolds_radix[i][j].pow for j in range(m)] for i in range(l)]
-        h_radix = PowRadix(h, k) 
-        hpow = h_radix.pow
-        t01=time.time()
-
-        # votes and commitment on votes
-        Vs=np.zeros(m,dtype=object)
-        vs=np.random.randint(2,size=(l,m))
-        t02=time.time()
-        gammas=np.zeros(m,dtype=object)
-        for i in range(m):
-            gammas_i=random_exp()
-            gammas[i]=gammas_i
-            product=hpow(gammas_i)
-            for j in range(l):
-                product= product*gspow[j](mpz(vs[j][i]))%p
-            Vs[i]=product
-        t00 = time.time()
-        n_false=0
-        generation_t.append(t00-t02+t01-t0)
-        p_t=[]
-        v_t=[]
-        for i in range(1):
-            t1=time.time()
-            #profiler = cProfile.Profile()
-            #profiler.enable()
-            A,S,T1,T2,tau_x,mu,phi,t_bar,bp1,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
-            #profiler.disable()
-            #profiler.dump_stats("p_1_1")
-            t2=time.time()
-            size.append(compute_size(A,S,T1,T2,tau_x,mu,phi,t_bar,bp1,bp2,e1,l,m))
-
-            p_t.append( t2-t1)
-            #profiler2 = cProfile.Profile()
-            #profiler2.enable()
-            t=verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T1,T2,tau_x,mu,phi,t_bar,bp1,bp2,e1)
-            #profiler2.disable()
-            #profiler2.dump_stats("v_1_1")
-            t3=time.time()
-            v_t.append( t3-t2)
-            if t!=0:
-                n_false+=1
-                print(t)
-        print(k,l,m,n_false,t00-t02+t01-t0,p_t,v_t)
-        prover_t.append(np.mean(p_t))
-        verifier_t.append(np.mean(v_t))
-    print("k {} l {}".format(k,l))
-    print("generation_t=",generation_t)
-    print("prover_t=",prover_t)
-    print("verifier_t=",verifier_t)
-    print("size=",size)
-    print("--- %s seconds ---" % (time.time() - start_time))
-#stats=pstats.Stats("p_1_1")
-#stats.print_callers("powmod")
-#stats=pstats.Stats("v_1_1")
-#stats.print_callers("powmod")
+A,S,T1,T2,tau_x,mu,phi,t_bar,bp1,bp2,e1=generate_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,vs,gammas)
+t=verify_proof(gs,hs,h,u,g_bolds,h_bolds,Vs,A,S,T1,T2,tau_x,mu,phi,t_bar,bp1,bp2,e1)
+print(t)

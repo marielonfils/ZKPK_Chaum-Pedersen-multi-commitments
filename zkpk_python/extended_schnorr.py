@@ -2,7 +2,25 @@ import numpy as np
 from utils.hash2 import hash_elems
 from gmpy2 import powmod as pow,mpz
 
+### Implementation of the Extended Schnorr argument###
+
+#Prover's function
 def extended_schnorr_proof(g,P,a,p,q):
+    """
+    Provides a zero knowledge proof of the relation : g[0]^a[0]...g[n-1]^a[n-1]=P
+    inputs
+        - g : array of mpz of size n containing elements of a group modulo p
+        - a : array of mpz of size n, element of a group modulo q
+        - P : mpz, element of a group modulo p
+        - p : mpz, prime value, all elements are modulo p
+        - q : mpz, exponents are modulo q
+        Note that n should be a power of 2.
+    outputs:
+        - a_s : array of mpz of size log_2(n) containing elements of a group modulo q
+        - bs  : array of mpz of size log_2(n) containing elements of a group modulo q
+        - Ls  : array of mpz of size log_2(n) containing elements of a group modulo p
+        - Rs  : array of mpz of size log_2(n) containing elements of a group modulo p
+    """
     Ls=[]
     Rs=[]
     def proof(g,P,a,n):
@@ -52,8 +70,24 @@ def extended_schnorr_proof(g,P,a,p,q):
         raise ValueError("vectors have not the same length")
     return proof(g,P,a,n)
 
-
+#Verifier's function
 def extended_schnorr_verification(g,P,a,Ls,Rs,p,q):
+    """
+    Verifies if g[0]^c[0]...g[n-1]^c[n-1]=P
+    inputs
+        - g : array of mpz of size n containing elements of a group modulo p
+        - P : mpz element of a group modulo p
+        - a : mpz element of a group modulo q
+        - Ls: array of mpz of size log_2(n) containing elements of a group modulo p
+        - Rs: array of mpz of size log_2(n) containing elements of a group modulo p
+        - p : mpz, prime value, all elements are modulo p
+        - q : mpz, exponents are modulo q
+        Note that n should be a power of 2.
+    outputs
+        - True : success, proof verified
+        - False: the proof is erroneous
+        - ValueError : if len(Rs) != len(Ls) or if n is not a power of 2
+    """
     n_prime=len(g)
     n_prime2=len(Ls)
     if not((n_prime != 0) and (n_prime & (n_prime-1) == 0)):
